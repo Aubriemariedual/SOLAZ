@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #2D5016;
+  --color-forest-hover: #3D6B20;
+  --color-gold: #B89A5A;
+  --color-cream: #F2F1E6;
+  /* Add other custom colors here */
+}
