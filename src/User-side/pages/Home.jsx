@@ -1,11 +1,14 @@
+// Home.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users, Star, Heart, ArrowRight, Headphones, BadgeCheck,
          ChevronLeft, ChevronRight, Plus, Minus, X, Wifi, Wind, Car, Waves, Bath,
-         Home as HomeIcon, Maximize2, Eye, Utensils, Users2, ChevronDown } from 'lucide-react';
+         Home as HomeIcon, Maximize2, Eye, Utensils, Users2, ChevronDown, ImageIcon } from 'lucide-react';
 import Rooms from './Rooms';
+import { db } from '../../../firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 /* ─────────────────────────────────────────────────────────────
-   STYLES
+   STYLES (keep all your existing styles - they remain the same)
 ───────────────────────────────────────────────────────────── */
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -346,7 +349,7 @@ const styles = `
   }
   .gallery-dot.active { background: var(--rust); transform: scale(1.3); }
 
-  /* ── FAQS (updated) ────────────────────────────────────── */
+  /* ── FAQS ────────────────────────────────────────────── */
   .faqs-section { background: var(--cream); padding-bottom: 80px; transition: background 0.4s; }
   .faqs-inner { max-width: 920px; margin: 0 auto; padding: 0 40px; }
   .faqs-header { text-align: center; margin-bottom: 48px; }
@@ -453,7 +456,6 @@ const styles = `
   }
   @media (max-width: 768px) { .contact-inner { grid-template-columns: 1fr; } }
 
-  /* Left col — form */
   .contact-h2 {
     font-family: 'Cormorant Garamond', serif;
     font-style: italic; font-size: 44px; font-weight: 600;
@@ -485,7 +487,6 @@ const styles = `
   }
   .contact-btn:hover { background: var(--forest2); }
 
-  /* Right col — info cards + map */
   .contact-info-col {
     display: flex; flex-direction: column; gap: 12px;
   }
@@ -526,118 +527,7 @@ const styles = `
   .contact-map-wrap iframe {
     width: 100%; height: 100%; display: block; border: none;
   }
-
-  /* ── ROOM DETAIL PAGE ────────────────────────────────── */
-  .room-detail-page { min-height: 100vh; background: var(--cream); transition: background 0.4s; }
-  .room-detail-back {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 24px 40px; color: var(--forest); font-size: 14px; font-weight: 500;
-    cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif;
-    transition: gap 0.2s, color 0.3s;
-  }
-  .room-detail-back:hover { gap: 12px; }
-  .room-detail-hero {
-    width: 100%; max-height: 520px; overflow: hidden; position: relative;
-  }
-  .room-detail-hero img { width: 100%; height: 520px; object-fit: cover; display: block; }
-  .room-detail-hero-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%);
-    display: flex; align-items: flex-end; padding: 40px;
-  }
-  .room-detail-hero-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 52px; font-weight: 600; color: white;
-    line-height: 1.1; text-shadow: 0 2px 20px rgba(0,0,0,0.3);
-  }
-  .room-detail-body { max-width: 1100px; margin: 0 auto; padding: 48px 40px; display: grid; grid-template-columns: 1fr 380px; gap: 56px; }
-  @media (max-width: 900px) { .room-detail-body { grid-template-columns: 1fr; } }
-  .room-detail-badge {
-    display: inline-flex; align-items: center;
-    background: var(--forest); color: white;
-    border-radius: 100px; padding: 4px 14px;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-    margin-bottom: 20px; transition: background 0.3s;
-  }
-  .room-detail-description {
-    font-size: 16px; color: var(--muted); line-height: 1.8; margin-bottom: 32px; transition: color 0.3s;
-  }
-  .room-detail-section-title {
-    font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600;
-    color: var(--text); margin-bottom: 20px; transition: color 0.3s;
-  }
-  .room-detail-amenities { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 40px; }
-  .room-detail-amenity {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 14px; font-size: 13px; color: var(--text);
-    transition: background 0.3s, border-color 0.3s, color 0.3s;
-  }
-  .room-detail-amenity svg { color: var(--forest); }
-  .room-detail-sidebar { position: sticky; top: 24px; }
-  .room-detail-price-card {
-    background: var(--white); border: 1px solid var(--border); border-radius: 16px;
-    padding: 28px; box-shadow: 0 8px 40px rgba(0,0,0,0.07);
-    transition: background 0.3s, border-color 0.3s;
-  }
-  [data-theme="dark"] .room-detail-price-card { box-shadow: 0 8px 40px rgba(0,0,0,0.3); }
-  .room-detail-price-big {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 44px; font-weight: 600; color: var(--forest); margin-bottom: 4px; transition: color 0.3s;
-  }
-  .room-detail-price-big span { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--muted); font-weight: 400; }
-  .room-detail-rating { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); margin-bottom: 24px; transition: color 0.3s; }
-  .room-detail-rating svg { fill: #f0a500; color: #f0a500; }
-  .room-detail-reserve-btn {
-    width: 100%; padding: 15px; background: var(--forest); color: white;
-    border: none; border-radius: 10px; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
-    transition: background 0.2s, transform 0.15s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .room-detail-reserve-btn:hover { background: var(--forest2); transform: translateY(-1px); }
-  .room-detail-divider { height: 1px; background: var(--border); margin: 20px 0; transition: background 0.3s; }
-  .room-detail-info-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; }
-  .room-detail-info-row span:first-child { color: var(--muted); transition: color 0.3s; }
-  .room-detail-info-row span:last-child { font-weight: 500; color: var(--text); transition: color 0.3s; }
 `;
-
-/* ── Data ───────────────────────────────────────────────── */
-const ROOMS = [
-  { id:1, name:'Garden Deluxe', desc:'A serene haven surrounded by lush greenery with a private terrace and garden views.', price:180, guests:2, badge:'Popular',
-    image:'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=700&q=80',
-    longDesc: 'Nestled within our meticulously tended gardens, the Garden Deluxe room is a serene haven designed for those who seek tranquility. Wake to birdsong and the scent of jasmine through your private terrace doors. The room features handcrafted rattan furnishings, organic linen bedding, and a curated collection of local botanicals that bring the garden indoors.' },
-  { id:2, name:'Forest Suite', desc:'Immerse yourself in nature with floor-to-ceiling windows overlooking the forest canopy.', price:240, guests:2, badge:'Top Pick',
-    image:'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=700&q=80',
-    longDesc: 'The Forest Suite is our most beloved accommodation, offering an unparalleled connection with the surrounding woodland. Floor-to-ceiling windows frame a living canvas of shifting light and verdant canopy. As day turns to dusk, watch the forest transform from emerald to gold from the comfort of your plush king bed.' },
-  { id:3, name:'Cottage Retreat', desc:'A charming standalone cottage with a fireplace, kitchenette, and private garden.', price:320, guests:4, badge:'New',
-    image:'https://images.unsplash.com/photo-1506974210756-8e1b8985d348?w=700&q=80',
-    longDesc: 'Our standalone Cottage Retreat offers the ultimate in private luxury. Complete with a stone fireplace, fully equipped kitchenette, and a walled private garden, this space is perfect for families or couples seeking total seclusion. The cottage blends heritage architectural details with thoughtful modern amenities.' },
-  { id:4, name:'Canopy Villa', desc:'Experience elevated luxury in our signature villa with panoramic treetop views.', price:450, guests:6, badge:'Luxury',
-    image:'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=700&q=80',
-    longDesc: 'Our crown jewel, the Canopy Villa, is perched among the treetops offering 360-degree panoramic views of the surrounding landscape. This expansive villa accommodates up to six guests and features a private infinity plunge pool, outdoor dining terrace, and a dedicated butler service for the duration of your stay.' },
-  { id:5, name:'Meadow Room', desc:'Light-filled room with meadow views, artisanal furnishings, and a soaking tub.', price:200, guests:2, badge:'Cozy',
-    image:'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=700&q=80',
-    longDesc: 'The Meadow Room celebrates openness and light. Expansive windows frame sweeping views of our wildflower meadow, while the freestanding copper soaking tub invites long, contemplative baths. Artisanal furnishings crafted by local makers give this space a warmth that is entirely its own.' },
-  { id:6, name:'Heritage Loft', desc:'A loft-style suite blending vintage character with modern comforts and skylights.', price:280, guests:3, badge:'Unique',
-    image:'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&q=80',
-    longDesc: 'Housed in our original 19th-century barn structure, the Heritage Loft is a study in thoughtful preservation. Exposed timber beams and original stone walls are complemented by skylights that flood the space with natural light. The sleeping loft above the main living area creates an intimate atmosphere unlike any other room in our collection.' },
-];
-
-const GALLERY_IMAGES = [
-  'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=1200&q=80',
-  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&q=80',
-  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1200&q=80',
-  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1200&q=80',
-  'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1200&q=80',
-  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1200&q=80',
-];
-
-const ROOM_AMENITIES = [
-  {label:'Entire place', Icon:HomeIcon},{label:'Free WiFi', Icon:Wifi},
-  {label:'Air conditioning', Icon:Wind},{label:'Private bathroom', Icon:Bath},
-  {label:'Private parking', Icon:Car},{label:'Full kitchen', Icon:Utensils},
-];
 
 /* ── Calendar helpers ───────────────────────────────────── */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -679,8 +569,41 @@ function CalendarMonth({ year, month, startDate, endDate, hoverDate, onDayClick,
   );
 }
 
-/* ── Main Component ─────────────────────────────────────── */
+/* ── Helper function to get badge by room type ───────────────────── */
+const getBadgeByType = (type) => {
+  const badges = {
+    'Standard': 'Classic',
+    'Superior': 'Premium',
+    'Deluxe': 'Luxury',
+    'Suite': 'VIP Suite'
+  };
+  return badges[type] || 'Featured';
+};
+
+/* ── Placeholder images (same as in RoomManagement) ───────────────────── */
+const TYPE_IMAGES = {
+  Standard:  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600&q=80',
+  Superior:  'https://images.unsplash.com/photo-1566195992011-5f6b21e539aa?w=600&q=80',
+  Deluxe:    'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=600&q=80',
+  Suite:     'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=600&q=80',
+};
+
+/* ── Fallback gallery images ───────────────────────────────────── */
+const FALLBACK_GALLERY_IMAGES = [
+  'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=1200&q=80',
+  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&q=80',
+  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1200&q=80',
+  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1200&q=80',
+  'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1200&q=80',
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1200&q=80',
+];
+
+/* ─── Main Component ─────────────────────────────────────── */
 export default function Home() {
+  const [rooms, setRooms] = useState([]);
+  const [filteredRooms, setFilteredRooms] = useState([]);
+  const [galleryImages, setGalleryImages] = useState(FALLBACK_GALLERY_IMAGES);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen]             = useState(null);
   const [location, setLocation]     = useState('');
   const [startDate, setStartDate]   = useState(null);
@@ -696,8 +619,131 @@ export default function Home() {
   const [faqOpen, setFaqOpen] = useState(null);
   const barRef = useRef(null);
 
+  // Fetch rooms and gallery images from Firebase
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch ALL rooms (no status filter)
+        let roomsData = [];
+        try {
+          const roomsCollection = collection(db, 'rooms');
+          const roomsQuery = query(roomsCollection, orderBy('createdAt', 'desc'));
+          const roomsSnapshot = await getDocs(roomsQuery);
+          
+          console.log('📊 Total rooms found in Firebase:', roomsSnapshot.size);
+          
+          if (!roomsSnapshot.empty) {
+            roomsData = roomsSnapshot.docs.map(doc => {
+              const data = doc.data();
+              console.log('🏠 Room found:', { id: doc.id, name: data.name, type: data.type, status: data.status, price: data.ratePerDay });
+              return {
+                id: doc.id,
+                name: data.name || 'Luxury Room',
+                type: data.type || 'Standard',
+                desc: data.description || 'A serene haven designed for your comfort.',
+                price: data.ratePerDay || 180,
+                guests: data.capacity || 2,
+                capacity: data.capacity || 2,
+                image: data.imageUrl || TYPE_IMAGES[data.type] || TYPE_IMAGES.Standard,
+                imageUrl: data.imageUrl,
+                badge: getBadgeByType(data.type),
+                rating: 4.8,
+                reviews: 128,
+                location: data.floor ? `${data.type} Room, Floor ${data.floor}` : `${data.type} Room`,
+                longDesc: data.description || 'Experience luxury and comfort in our carefully designed spaces.',
+                amenities: data.amenities || ['WiFi', 'AC', 'TV'],
+                status: data.status
+              };
+            });
+            console.log(`✅ Loaded ${roomsData.length} rooms from Firebase`);
+          } else {
+            console.log('⚠️ No rooms found in Firebase - showing empty state');
+          }
+        } catch (roomError) {
+          console.error('❌ Error fetching rooms:', roomError);
+        }
+        setRooms(roomsData);
+        setFilteredRooms(roomsData); // Initialize filtered rooms with all rooms
+
+        // Fetch gallery images
+        try {
+          const galleryCollection = collection(db, 'gallery');
+          const galleryQuery = query(galleryCollection, orderBy('order', 'asc'));
+          const gallerySnapshot = await getDocs(galleryQuery);
+          
+          if (!gallerySnapshot.empty) {
+            const galleryData = gallerySnapshot.docs.map(doc => doc.data().url).filter(url => url);
+            if (galleryData.length > 0) {
+              setGalleryImages(galleryData);
+              console.log(`✅ Loaded ${galleryData.length} gallery images from Firebase`);
+            } else {
+              console.log('⚠️ Gallery collection empty - using fallback images');
+              setGalleryImages(FALLBACK_GALLERY_IMAGES);
+            }
+          } else {
+            console.log('⚠️ No gallery collection found - using fallback images');
+            setGalleryImages(FALLBACK_GALLERY_IMAGES);
+          }
+        } catch (galleryError) {
+          console.error('❌ Error fetching gallery images:', galleryError);
+          setGalleryImages(FALLBACK_GALLERY_IMAGES);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching data:", error);
+        setRooms([]);
+        setFilteredRooms([]);
+        setGalleryImages(FALLBACK_GALLERY_IMAGES);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Filter rooms based on search criteria
+  useEffect(() => {
+    if (!rooms.length) return;
+    
+    let filtered = [...rooms];
+    const totalGuestsCount = guests.adults + guests.children;
+    
+    // Filter by location/room name search
+    if (location.trim()) {
+      const searchTerm = location.toLowerCase().trim();
+      filtered = filtered.filter(room => 
+        room.name.toLowerCase().includes(searchTerm) || 
+        room.type.toLowerCase().includes(searchTerm) ||
+        room.desc.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Filter by date availability (if dates are selected)
+    if (startDate && endDate) {
+      // This is a placeholder - implement actual availability checking
+      // For now, we'll show all rooms but you can add your availability logic here
+      filtered = filtered.filter(room => {
+        // Check if room is available between startDate and endDate
+        // You'll need to implement this based on your booking data structure
+        return true; // Placeholder - implement actual availability check
+      });
+    }
+    
+    // Filter by guest capacity
+    if (totalGuestsCount > 0) {
+      filtered = filtered.filter(room => (room.capacity || room.guests) >= totalGuestsCount);
+    }
+    
+    setFilteredRooms(filtered);
+    
+    // Reset carousel index when filtered rooms change
+    setCarouselIdx(0);
+    
+  }, [rooms, location, startDate, endDate, guests.adults, guests.children]);
+
   const totalGuests = guests.adults + guests.children;
-  const guestLabel = totalGuests===0 ? null : totalGuests===1 ? '1 guest' : `${totalGuests} guests`
+  const guestLabel = totalGuests === 0 ? null : totalGuests === 1 ? '1 guest' : `${totalGuests} guests`
     + (guests.infants ? `, ${guests.infants} infant${guests.infants>1?'s':''}` : '')
     + (guests.pets    ? `, ${guests.pets} pet${guests.pets>1?'s':''}` : '');
 
@@ -715,7 +761,7 @@ export default function Home() {
   const whenLabel = startDate && endDate ? `${fmt(startDate)} – ${fmt(endDate)}` : startDate ? `${fmt(startDate)} – ?` : null;
 
   const visibleCount = 3;
-  const maxIdx = Math.max(0, ROOMS.length - visibleCount);
+  const maxIdx = Math.max(0, filteredRooms.length - visibleCount);
 
   useEffect(() => {
     const h = e => { if(barRef.current && !barRef.current.contains(e.target)) setOpen(null); };
@@ -723,8 +769,33 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const prevGallery = () => setGalleryIdx(i => (i - 1 + GALLERY_IMAGES.length) % GALLERY_IMAGES.length);
-  const nextGallery = () => setGalleryIdx(i => (i + 1) % GALLERY_IMAGES.length);
+  const prevGallery = () => setGalleryIdx(i => (i - 1 + galleryImages.length) % galleryImages.length);
+  const nextGallery = () => setGalleryIdx(i => (i + 1) % galleryImages.length);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setLocation('');
+    setStartDate(null);
+    setEndDate(null);
+    setGuests({adults:0, children:0, infants:0, pets:0});
+    setOpen(null);
+  };
+
+  if (loading) {
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="solaz-root">
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D5016] mb-4"></div>
+              <p style={{ color: '#7A6A4E' }}>Loading Solaz...</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (selectedRoom) {
     return (
@@ -736,6 +807,8 @@ export default function Home() {
       </>
     );
   }
+
+  const isSearchActive = location.trim() !== '' || (startDate && endDate) || totalGuests > 0;
 
   return (
     <>
@@ -754,10 +827,10 @@ export default function Home() {
                 onClick={()=>setOpen(o=>(o==='location'?null:'location'))}>
                 <div className="ab-label">Where</div>
                 {open==='location' ? (
-                  <input className="ab-input" placeholder="Search rooms" value={location}
+                  <input className="ab-input" placeholder="Search rooms by name or type" value={location}
                     onChange={e=>setLocation(e.target.value)} onClick={e=>e.stopPropagation()} autoFocus/>
                 ) : (
-                  <div className={`ab-value${location?' filled':''}`}>{location||'Search rooms'}</div>
+                  <div className={`ab-value${location?' filled':''}`}>{location||'Search rooms by name or type'}</div>
                 )}
               </div>
               <div className="ab-sep"/>
@@ -832,7 +905,9 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <button className="ab-search-btn" onClick={()=>setOpen(null)}><Search size={20}/></button>
+              <button className="ab-search-btn" onClick={() => setOpen(null)}>
+                <Search size={20}/>
+              </button>
             </div>
           </div>
           <div className="hero-right">
@@ -849,47 +924,129 @@ export default function Home() {
           </div>
           <p className="section-tagline">A quiet retreat designed for your comfort and ease.</p>
 
-          <div style={{position:'relative'}}>
-            <div className="rooms-track-wrap">
-              <div className="rooms-track" style={{transform:`translateX(calc(-${carouselIdx} * (100% / 3 + 8px)))`}}>
-                {ROOMS.map(room => (
-                  <div key={room.id} className="room-card" onClick={() => setSelectedRoom(room)}>
-                    <div className="room-img-wrap">
-                      <img className="room-img" src={room.image} alt={room.name}/>
-                      <div className="room-img-overlay">
-                        <button className="room-view-btn" onClick={e => { e.stopPropagation(); setSelectedRoom(room); }}>
-                          <Eye size={12}/> View Room
-                        </button>
+          {filteredRooms.length > 0 ? (
+            <div style={{position:'relative'}}>
+              {/* Search results summary */}
+              {isSearchActive && (
+                <div style={{ 
+                  textAlign: 'center', 
+                  marginBottom: '24px',
+                  padding: '12px 20px',
+                  backgroundColor: 'var(--forest)',
+                  color: 'white',
+                  borderRadius: '100px',
+                  display: 'inline-block',
+                  width: 'auto',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  Found {filteredRooms.length} room{filteredRooms.length !== 1 ? 's' : ''} matching your search
+                  <button 
+                    onClick={clearFilters}
+                    style={{
+                      marginLeft: '12px',
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 'none',
+                      borderRadius: '100px',
+                      padding: '4px 12px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+              
+              <div className="rooms-track-wrap">
+                <div className="rooms-track" style={{transform:`translateX(calc(-${carouselIdx} * (100% / 3 + 8px)))`}}>
+                  {filteredRooms.map(room => (
+                    <div key={room.id} className="room-card" onClick={() => setSelectedRoom(room)}>
+                      <div className="room-img-wrap">
+                        <img className="room-img" src={room.image} alt={room.name} onError={(e) => {
+                          e.target.src = TYPE_IMAGES.Standard;
+                        }}/>
+                        <div className="room-img-overlay">
+                          <button className="room-view-btn" onClick={e => { e.stopPropagation(); setSelectedRoom(room); }}>
+                            <Eye size={12}/> View Room
+                          </button>
+                        </div>
+                      </div>
+                      <div className="room-body">
+                        <div className="room-name">{room.name}</div>
+                        <div className="room-desc">{room.desc}</div>
+                        <div className="room-meta">
+                          <div className="room-price">₱{room.price}<span>/night</span></div>
+                          <div className="room-guests"><Users size={12}/>{room.guests} guests</div>
+                        </div>
                       </div>
                     </div>
-                    <div className="room-body">
-                      <div className="room-name">{room.name}</div>
-                      <div className="room-desc">{room.desc}</div>
-                      <div className="room-meta">
-                        <div className="room-price">${room.price}<span>/night</span></div>
-                        <div className="room-guests"><Users size={12}/>{room.guests} guests</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+              
+              {filteredRooms.length > 3 && (
+                <div className="carousel-nav">
+                  <button 
+                    className="carousel-btn" 
+                    disabled={carouselIdx === 0} 
+                    onClick={() => setCarouselIdx(i => Math.max(0, i - 1))}
+                  >
+                    <ChevronLeft size={16}/>
+                  </button>
+                  {Array.from({length: Math.min(filteredRooms.length, visibleCount)}).map((_,i) => (
+                    <div 
+                      key={i} 
+                      onClick={() => setCarouselIdx(i)} 
+                      style={{
+                        width: 6, 
+                        height: 6, 
+                        borderRadius: '50%', 
+                        cursor: 'pointer',
+                        background: i === carouselIdx ? 'var(--rust)' : 'var(--border)',
+                        transition: 'background 0.2s', 
+                        alignSelf: 'center'
+                      }}
+                    />
+                  ))}
+                  <button 
+                    className="carousel-btn" 
+                    disabled={carouselIdx >= maxIdx} 
+                    onClick={() => setCarouselIdx(i => Math.min(i + 1, maxIdx))}
+                  >
+                    <ChevronRight size={16}/>
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="carousel-nav">
-              <button className="carousel-btn" disabled={carouselIdx===0} onClick={()=>setCarouselIdx(i=>i-1)}>
-                <ChevronLeft size={16}/>
-              </button>
-              {Array.from({length: ROOMS.length - visibleCount + 1}).map((_,i)=>(
-                <div key={i} onClick={()=>setCarouselIdx(i)} style={{
-                  width:6, height:6, borderRadius:'50%', cursor:'pointer',
-                  background: i===carouselIdx ? 'var(--rust)' : 'var(--border)',
-                  transition:'background 0.2s', alignSelf:'center'
-                }}/>
-              ))}
-              <button className="carousel-btn" disabled={carouselIdx>=maxIdx} onClick={()=>setCarouselIdx(i=>Math.min(i+1,maxIdx))}>
-                <ChevronRight size={16}/>
-              </button>
+          ) : (
+            <div className="text-center py-20">
+              <div className="mb-4">
+                <Search size={48} style={{ color: '#A89878', opacity: 0.5, margin: '0 auto' }} />
+              </div>
+              <p style={{ color: '#A89878', fontSize: '18px', fontWeight: 500 }}>No rooms match your search</p>
+              <p style={{ color: '#A89878', fontSize: '14px', marginTop: '8px' }}>
+                Try adjusting your search criteria or 
+                <button 
+                  onClick={clearFilters}
+                  style={{ 
+                    color: 'var(--forest)', 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    marginLeft: '4px'
+                  }}
+                >
+                  clear all filters
+                </button>
+              </p>
             </div>
-          </div>
+          )}
         </section>
 
         {/* ── GALLERY ─────────────────────────────────── */}
@@ -900,19 +1057,30 @@ export default function Home() {
             <div className="divider-line"/>
           </div>
           <p className="section-tagline">Visions of solace designed to inspire your next stay.</p>
-          <div className="gallery-viewer">
-            <div className="gallery-main">
-              <img src={GALLERY_IMAGES[galleryIdx]} alt={`Gallery ${galleryIdx+1}`}/>
-              <button className="gallery-btn prev" onClick={prevGallery}><ChevronLeft size={18}/></button>
-              <button className="gallery-btn next" onClick={nextGallery}><ChevronRight size={18}/></button>
+          
+          {galleryImages.length > 0 ? (
+            <div className="gallery-viewer">
+              <div className="gallery-main">
+                <img src={galleryImages[galleryIdx]} alt={`Gallery ${galleryIdx+1}`}/>
+                <button className="gallery-btn prev" onClick={prevGallery}><ChevronLeft size={18}/></button>
+                <button className="gallery-btn next" onClick={nextGallery}><ChevronRight size={18}/></button>
+              </div>
+              <div className="gallery-dots">
+                {galleryImages.map((_,i)=>(
+                  <div key={i} className={`gallery-dot${i===galleryIdx?' active':''}`} onClick={()=>setGalleryIdx(i)}/>
+                ))}
+              </div>
+              <div className="gallery-counter">{galleryIdx+1} / {galleryImages.length}</div>
             </div>
-            <div className="gallery-dots">
-              {GALLERY_IMAGES.map((_,i)=>(
-                <div key={i} className={`gallery-dot${i===galleryIdx?' active':''}`} onClick={()=>setGalleryIdx(i)}/>
-              ))}
+          ) : (
+            <div className="text-center py-20">
+              <div className="mb-4">
+                <ImageIcon size={48} style={{ color: '#A89878', opacity: 0.5, margin: '0 auto' }} />
+              </div>
+              <p style={{ color: '#A89878', fontSize: '18px', fontWeight: 500 }}>No Gallery Images Available</p>
+              <p style={{ color: '#A89878', fontSize: '14px', marginTop: '8px' }}>Our beautiful gallery will be updated soon.</p>
             </div>
-            <div className="gallery-counter">{galleryIdx+1} / {GALLERY_IMAGES.length}</div>
-          </div>
+          )}
         </section>
 
         {/* ── CONTACT ─────────────────────────────────── */}
@@ -924,7 +1092,6 @@ export default function Home() {
           </div>
           <div className="contact-inner">
 
-            {/* Left — form */}
             <div className="contact-left">
               <div className="contact-h2">Get in touch</div>
               <p className="contact-sub">Reach out and let us help you find your perfect space.</p>
@@ -943,13 +1110,8 @@ export default function Home() {
               <button className="contact-btn">Contact Us</button>
             </div>
 
-            {/* Right — info cards + map */}
             <div className="contact-info-col">
-
-              {/* Two info cards side-by-side */}
               <div className="contact-info-cards">
-
-                {/* Our Location */}
                 <div className="contact-info-card">
                   <div className="contact-info-card-title">Our Location</div>
                   <div className="contact-info-card-row">
@@ -958,7 +1120,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Contact Info */}
                 <div className="contact-info-card">
                   <div className="contact-info-card-title">Contact Info</div>
                   <div className="contact-info-card-row">
@@ -974,10 +1135,8 @@ export default function Home() {
                     <span>Reception: 24/7</span>
                   </div>
                 </div>
-
               </div>
 
-              {/* Embedded Google Map */}
               <div className="contact-map-wrap">
                 <iframe
                   title="Solaz Location"
@@ -990,7 +1149,6 @@ export default function Home() {
                   referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
-
             </div>
           </div>
         </section>
@@ -1008,10 +1166,7 @@ export default function Home() {
               <p className="faqs-subtitle">Got questions? We're here to help you find your peace.</p>
             </div>
             
-            {/* FAQ Categories */}
             <div className="faq-categories">
-              
-              {/* BOOKING & RESERVATIONS */}
               <div className="faq-category">
                 <h3 className="faq-category-title">BOOKING & RESERVATIONS</h3>
                 <div className="faq-items">
@@ -1041,7 +1196,6 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* CANCELLATIONS & REFUNDS */}
               <div className="faq-category">
                 <h3 className="faq-category-title">CANCELLATIONS & REFUNDS</h3>
                 <div className="faq-items">
@@ -1059,7 +1213,6 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* AMENITIES & SERVICES */}
               <div className="faq-category">
                 <h3 className="faq-category-title">AMENITIES & SERVICES</h3>
                 <div className="faq-items">
@@ -1088,7 +1241,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              
             </div>
           </div>
         </section>

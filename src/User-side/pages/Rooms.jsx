@@ -1,10 +1,13 @@
+// Rooms.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, MapPin, Calendar, Users, Heart, ChevronLeft, ChevronRight,
   Plus, Minus, X, Wifi, Wind, Car, Bath, Home as HomeIcon, Utensils,
   Star, Waves, Coffee, Tv, Shield, Phone, ArrowLeft, Award, Maximize2, Coffee as CoffeeIcon, Eye
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { db, auth } from '../../../firebase';
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -31,7 +34,6 @@ const STYLES = `
     position: relative;
   }
 
-  /* Back button */
   .rooms-back-btn {
     position: absolute;
     top: 30px;
@@ -60,7 +62,6 @@ const STYLES = `
     box-shadow: 0 6px 16px rgba(0,0,0,0.15);
   }
 
-  /* ── HERO SECTION ──────────────────────────────────────── */
   .rp-hero {
     background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400&q=80');
     background-size: cover;
@@ -87,7 +88,6 @@ const STYLES = `
     letter-spacing: 0.5px;
   }
 
-  /* ── SEARCH BAR (CENTERED) ───────────────────────────── */
   .rp-search-wrap {
     padding: 0 40px;
     max-width: 1200px;
@@ -180,7 +180,6 @@ const STYLES = `
   }
   .ab-search-btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(45,80,22,0.4); }
 
-  /* Dropdowns - same as before */
   .ab-dropdown {
     position: absolute;
     top: calc(100% + 12px);
@@ -233,7 +232,6 @@ const STYLES = `
   .g-btn:disabled { opacity: 0.3; cursor: default; }
   .g-count { font-size: 15px; font-weight: 500; min-width: 16px; text-align: center; }
 
-  /* ── SECTION HEADER ──────────────────────────────────── */
   .rp-header {
     max-width: 1200px;
     margin: 0 auto;
@@ -302,6 +300,34 @@ const STYLES = `
     color: white;
   }
 
+  .search-results-badge {
+    background: var(--forest);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .clear-filters-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 100px;
+    padding: 4px 12px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .clear-filters-btn:hover {
+    background: rgba(255,255,255,0.3);
+  }
+
   .wishlist-toggle-btn {
     display: flex;
     align-items: center;
@@ -326,10 +352,7 @@ const STYLES = `
     border-color: var(--rust);
     color: white;
   }
-  .wishlist-toggle-btn svg { transition: fill 0.2s; }
-  .wishlist-toggle-btn.active svg { fill: white; color: white; }
 
-  /* ── GRID ────────────────────────────────────────────── */
   .rp-grid {
     max-width: 1200px;
     margin: 0 auto;
@@ -341,7 +364,6 @@ const STYLES = `
   @media (max-width: 900px) { .rp-grid { grid-template-columns: repeat(2,1fr); } }
   @media (max-width: 580px) { .rp-grid { grid-template-columns: 1fr; padding: 0 20px 60px; } }
 
-  /* ── ROOM CARD ───────────────────────────────────────── */
   .room-card {
     background: var(--white);
     border-radius: 16px;
@@ -359,14 +381,6 @@ const STYLES = `
   }
   @keyframes fadeUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
 
-  /* stagger delay */
-  .room-card:nth-child(1) { animation-delay: 0.05s; }
-  .room-card:nth-child(2) { animation-delay: 0.10s; }
-  .room-card:nth-child(3) { animation-delay: 0.15s; }
-  .room-card:nth-child(4) { animation-delay: 0.20s; }
-  .room-card:nth-child(5) { animation-delay: 0.25s; }
-  .room-card:nth-child(6) { animation-delay: 0.30s; }
-
   .card-img-wrap {
     position: relative;
     width: 100%;
@@ -382,7 +396,6 @@ const STYLES = `
   }
   .room-card:hover .card-img { transform: scale(1.08); }
 
-  /* Badge */
   .card-badge {
     position: absolute;
     top: 16px;
@@ -396,9 +409,9 @@ const STYLES = `
     padding: 5px 14px;
     border-radius: 100px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    z-index: 2;
   }
 
-  /* Heart button */
   .card-heart {
     position: absolute;
     top: 16px;
@@ -418,8 +431,73 @@ const STYLES = `
     z-index: 2;
   }
   .card-heart:hover { transform: scale(1.15); background: white; }
-  .card-heart svg { transition: all 0.2s; }
   .card-heart.wishlisted svg { fill: #e53e3e; color: #e53e3e; }
+
+  /* Image Navigation Buttons */
+  .card-img-nav {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    z-index: 2;
+  }
+  .card-img-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: white;
+  }
+  .card-img-nav-btn:hover {
+    background: rgba(0,0,0,0.8);
+    transform: scale(1.1);
+  }
+  .card-img-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    z-index: 2;
+  }
+  .card-img-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .card-img-dot.active {
+    width: 8px;
+    height: 8px;
+    background: white;
+  }
+  .card-img-counter {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    z-index: 2;
+  }
 
   .card-body {
     padding: 24px 20px 20px;
@@ -442,7 +520,6 @@ const STYLES = `
     margin-bottom: 15px;
   }
 
-  /* Amenities chips */
   .card-amenities-row {
     display: flex;
     gap: 8px;
@@ -510,7 +587,6 @@ const STYLES = `
     color: var(--gold);
   }
 
-  /* BOOK NOW button */
   .card-book-btn {
     width: 100%;
     margin-top: 18px;
@@ -537,7 +613,7 @@ const STYLES = `
     box-shadow: 0 8px 20px rgba(45,80,22,0.3);
   }
 
-  /* ── DETAIL MODAL ────────────────────────────────────── */
+  /* Modal Gallery Styles */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 500;
     background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
@@ -563,32 +639,101 @@ const STYLES = `
   }
   .modal-close:hover { background: var(--cream2); transform: scale(1.05); }
 
-  .modal-images {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 4px;
-    height: 380px;
+  .modal-gallery {
+    position: relative;
+    width: 100%;
+    height: 450px;
+    background: #1a1a1a;
     margin-top: -60px;
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
   }
-  .modal-img-main {
-    height: 380px;
-    object-fit: cover;
+  .modal-gallery-main {
     width: 100%;
-    border-radius: 24px 0 0 0;
-    display: block;
-  }
-  .modal-img-side {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    gap: 4px;
-  }
-  .modal-img-side img {
-    width: 100%;
-    height: 188px;
+    height: 100%;
     object-fit: cover;
-    display: block;
   }
-  .modal-img-side img:first-child { border-radius: 0 24px 0 0; }
+  .modal-gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: white;
+  }
+  .modal-gallery-nav:hover {
+    background: rgba(0,0,0,0.8);
+    transform: translateY(-50%) scale(1.05);
+  }
+  .modal-gallery-nav.prev { left: 20px; }
+  .modal-gallery-nav.next { right: 20px; }
+  .modal-gallery-dots {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    z-index: 2;
+  }
+  .modal-gallery-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .modal-gallery-dot.active {
+    width: 10px;
+    height: 10px;
+    background: white;
+  }
+  .modal-gallery-counter {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+  }
+  .modal-thumbnails {
+    display: flex;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .modal-thumbnail {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .modal-thumbnail:hover,
+  .modal-thumbnail.active {
+    opacity: 1;
+    border-color: var(--forest);
+  }
 
   .modal-content { padding: 30px 36px 40px; }
   .modal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 6px; }
@@ -616,7 +761,6 @@ const STYLES = `
   .modal-map {
     width: 100%; height: 280px; border-radius: 16px; overflow: hidden;
     border: 1px solid var(--border); margin-top: 4px;
-    position: relative;
   }
   .modal-map iframe { width: 100%; height: 100%; border: none; display: block; }
 
@@ -646,7 +790,27 @@ const STYLES = `
   .wishlist-empty-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: var(--text); margin-bottom: 10px; }
   .wishlist-empty-sub { font-size: 16px; color: var(--muted); }
 
-  /* Responsive adjustments for back button */
+  .loading-spinner {
+    grid-column: 1/-1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px;
+  }
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--border);
+    border-top-color: var(--forest);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
   @media (max-width: 768px) {
     .rooms-back-btn {
       top: 20px;
@@ -654,182 +818,67 @@ const STYLES = `
       padding: 8px 16px;
       font-size: 13px;
     }
+    .modal-gallery {
+      height: 300px;
+    }
+    .modal-thumbnails {
+      padding: 8px 12px;
+    }
+    .modal-thumbnail {
+      width: 50px;
+      height: 50px;
+    }
   }
 `;
 
-/* ── Data ──────────────────────────────────────────────── */
-const ROOMS = [
-  {
-    id: 1,
-    name: 'Deluxe Suite',
-    badge: 'Best Seller',
-    price: 180,
-    guests: 2,
-    rating: 4.9,
-    reviews: 128,
-    location: 'Tagaytay, Cavite',
-    mapQuery: 'Tagaytay+Cavite+Philippines',
-    desc: 'Spacious living area with floor-to-ceiling windows and premium king-sized bed.',
-    longDesc: 'Experience unparalleled comfort in our Deluxe Suite, featuring floor-to-ceiling windows that frame breathtaking views of Taal Volcano. The suite includes a premium king-sized bed, separate living area, and 24/7 dedicated service.',
-    image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
-      'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=400&q=80',
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&q=80',
-    ],
-    amenities: ['WR', 'KING', '24/7 SERVICE'],
-    inclusions: [
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: 'Parking', Icon: Car },
-      { label: 'Private Bathroom', Icon: Bath },
-      { label: 'Breakfast Included', Icon: Coffee },
-      { label: 'Smart TV', Icon: Tv },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Ocean View',
-    badge: 'Premium',
-    price: 240,
-    guests: 2,
-    rating: 4.9,
-    reviews: 96,
-    location: 'Palawan',
-    mapQuery: 'Palawan+Philippines',
-    desc: 'Breathtaking panoramic views of the turquoise sea with a private balcony.',
-    longDesc: 'Wake up to the most stunning sunrise over the turquoise waters of Palawan. This room features a private balcony where you can enjoy your morning coffee while watching the waves. The interior is designed with coastal elegance and modern comforts.',
-    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
-      'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&q=80',
-      'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400&q=80',
-    ],
-    amenities: ['AMAZON', 'TUE', 'WR'],
-    inclusions: [
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: 'Private Balcony', Icon: Eye },
-      { label: 'Private Bathroom', Icon: Bath },
-      { label: 'Breakfast Included', Icon: Coffee },
-      { label: 'Beach Access', Icon: Waves },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Garden Villa',
-    badge: 'New',
-    price: 320,
-    guests: 4,
-    rating: 5.0,
-    reviews: 42,
-    location: 'Tagaytay, Cavite',
-    mapQuery: 'Tagaytay+Cavite+Philippines',
-    desc: 'Absolute privacy surrounded by lush tropical gardens and your own plunge pool.',
-    longDesc: 'Escape to your private sanctuary nestled within lush tropical gardens. The Garden Villa features a private plunge pool, outdoor shower, and a spacious living area that opens directly onto the garden. Perfect for those seeking seclusion and tranquility.',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80',
-    ],
-    amenities: ['FOLD', 'CARE', 'AC'],
-    inclusions: [
-      { label: 'Private Pool', Icon: Waves },
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: 'Garden View', Icon: Eye },
-      { label: 'Private Bathroom', Icon: Bath },
-      { label: 'Mini Bar', Icon: CoffeeIcon },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Penthouse Suite',
-    badge: 'Luxury',
-    price: 450,
-    guests: 6,
-    rating: 4.9,
-    reviews: 67,
-    location: 'Cebu City',
-    mapQuery: 'Cebu+City+Philippines',
-    desc: 'The pinnacle of luxury with a private rooftop terrace, cinema room, and personal butler.',
-    longDesc: 'The Penthouse Suite represents the ultimate in urban luxury. Spread across two levels, it features a private rooftop terrace with panoramic city views, a dedicated cinema room, and 24/7 personal butler service. Every detail has been curated for the discerning traveler.',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-      'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=400&q=80',
-      'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=400&q=80',
-    ],
-    amenities: ['SUITE', 'TERRACE', 'WIFI'],
-    inclusions: [
-      { label: 'Private Butler', Icon: Phone },
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Cinema Room', Icon: Tv },
-      { label: 'Rooftop Terrace', Icon: Maximize2 },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: 'Breakfast Included', Icon: Coffee },
-    ],
-  },
-  {
-    id: 5,
-    name: 'Beachfront Bungalow',
-    badge: 'Top Pick',
-    price: 380,
-    guests: 3,
-    rating: 4.8,
-    reviews: 89,
-    location: 'Boracay',
-    mapQuery: 'Boracay+Philippines',
-    desc: 'Step directly onto the white sands from your porch.',
-    longDesc: 'Experience the ultimate beachfront living. Your private porch opens directly onto the famous white sands of Boracay. The bungalow features an open-air dining area where you can enjoy meals with your feet in the sand and the sound of waves as your soundtrack.',
-    image: 'https://images.unsplash.com/photo-1506974210756-8e1b8985d348?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1506974210756-8e1b8985d348?w=800&q=80',
-      'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=400&q=80',
-      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80',
-    ],
-    amenities: ['FEATURING AN OPEN-AIR DINING AREA'],
-    inclusions: [
-      { label: 'Beachfront Access', Icon: Waves },
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: 'Open-air Dining', Icon: Utensils },
-      { label: 'Private Bathroom', Icon: Bath },
-      { label: 'Daily Housekeeping', Icon: Shield },
-    ],
-  },
-  {
-    id: 6,
-    name: 'Royal Suite',
-    badge: 'Presidential',
-    price: 650,
-    guests: 8,
-    rating: 5.0,
-    reviews: 34,
-    location: 'Manila',
-    mapQuery: 'Manila+Philippines',
-    desc: 'Our most prestigious accommodation. Two master bedrooms, grand dining hall, and private spa.',
-    longDesc: 'The Royal Suite is our crowning jewel, offering 300 square meters of pure luxury. Featuring two master bedrooms, a grand dining hall that seats 12, a private spa with sauna, and a dedicated concierge team. Perfect for VIPs, celebrities, and those who demand the absolute best.',
-    image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80',
-      'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&q=80',
-      'https://images.unsplash.com/photo-1590490359683-658d3d23f972?w=400&q=80',
-    ],
-    amenities: ['SPA', 'KITCHEN', 'WIFI'],
-    inclusions: [
-      { label: 'Private Spa', Icon: Bath },
-      { label: 'Full Kitchen', Icon: Utensils },
-      { label: 'Free WiFi', Icon: Wifi },
-      { label: 'Dining Hall', Icon: HomeIcon },
-      { label: 'Air Conditioning', Icon: Wind },
-      { label: '24/7 Butler', Icon: Phone },
-    ],
-  },
-];
+const INCLUSIONS_ICONS = {
+  'WiFi': Wifi,
+  'Air Conditioning': Wind,
+  'Parking': Car,
+  'Private Bathroom': Bath,
+  'Breakfast Included': Coffee,
+  'Smart TV': Tv,
+  'Private Balcony': Eye,
+  'Beach Access': Waves,
+  'Private Pool': Waves,
+  'Garden View': Eye,
+  'Mini Bar': CoffeeIcon,
+  'Private Butler': Phone,
+  'Cinema Room': Tv,
+  'Rooftop Terrace': Maximize2,
+  'Full Kitchen': Utensils,
+  'Dining Hall': HomeIcon,
+  '24/7 Butler': Phone,
+  'Daily Housekeeping': Shield,
+  'Open-air Dining': Utensils,
+  'Free WiFi': Wifi,
+  'AC': Wind,
+  'TV': Tv,
+  'Ref': CoffeeIcon,
+  'Hotwater': Waves,
+  'Balcony': Eye,
+  'Bathtub': Bath,
+  'Minibar': CoffeeIcon,
+  'Safe': Shield
+};
 
-/* ── Calendar helpers ───────────────────────────────────── */
+const TYPE_IMAGES = {
+  Standard: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
+  Superior: 'https://images.unsplash.com/photo-1566195992011-5f6b21e539aa?w=800&q=80',
+  Deluxe: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+  Suite: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&q=80',
+};
+
+const getBadgeByType = (type) => {
+  const badges = {
+    'Standard': 'Classic',
+    'Superior': 'Premium',
+    'Deluxe': 'Luxury',
+    'Suite': 'VIP Suite'
+  };
+  return badges[type] || 'Featured';
+};
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['S','M','T','W','T','F','S'];
 function isSameDay(a,b){ return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
@@ -868,8 +917,86 @@ function CalMonth({ year, month, startDate, endDate, hoverDate, onDayClick, onDa
   );
 }
 
-/* ── Room Detail Modal ──────────────────────────────────── */
+// Room Card Component with Multi-Image Support
+function RoomCard({ room, wishlisted, onWishlist, onClick, onBookNow }) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Get images array from room data
+  const images = room.images && room.images.length > 0 
+    ? room.images.sort((a, b) => (a.order || 0) - (b.order || 0)).map(img => img.url)
+    : [room.imageUrl || TYPE_IMAGES[room.type] || TYPE_IMAGES.Standard];
+  
+  const currentImage = images[currentImageIndex];
+  const hasMultipleImages = images.length > 1;
+
+  const nextImage = (e) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const goToImage = (index, e) => {
+    e.stopPropagation();
+    setCurrentImageIndex(index);
+  };
+
+  return (
+    <div className="room-card" onClick={() => onClick(room)}>
+      <div className="card-img-wrap">
+        <img className="card-img" src={currentImage} alt={`${room.name} - view ${currentImageIndex + 1}`}/>
+        <div className="card-badge">{room.badge}</div>
+        <button className={`card-heart${wishlisted?' wishlisted':''}`} onClick={e => { e.stopPropagation(); onWishlist(room.id); }}><Heart size={18}/></button>
+        
+        {hasMultipleImages && (
+          <>
+            <div className="card-img-nav">
+              <button className="card-img-nav-btn" onClick={prevImage}>
+                <ChevronLeft size={16}/>
+              </button>
+              <button className="card-img-nav-btn" onClick={nextImage}>
+                <ChevronRight size={16}/>
+              </button>
+            </div>
+            <div className="card-img-dots">
+              {images.map((_, idx) => (
+                <div 
+                  key={idx}
+                  className={`card-img-dot ${idx === currentImageIndex ? 'active' : ''}`}
+                  onClick={(e) => goToImage(idx, e)}
+                />
+              ))}
+            </div>
+            <div className="card-img-counter">
+              {currentImageIndex + 1}/{images.length}
+            </div>
+          </>
+        )}
+      </div>
+      <div className="card-body">
+        <div className="card-name">{room.name}</div>
+        <div className="card-location"><MapPin size={12}/>{room.location}</div>
+        <div className="card-amenities-row">
+          {room.amenities && room.amenities.slice(0, 3).map((amenity, i) => (<div key={i} className="card-amenity-chip">{amenity}</div>))}
+        </div>
+        <div className="card-desc">{room.desc}</div>
+        <div className="card-footer">
+          <div className="card-price">₱{room.price}<span>/night</span></div>
+          <div className="card-rating"><Star size={14}/>{room.rating} ({room.reviews})</div>
+        </div>
+        <button className="card-book-btn" onClick={(e) => { e.stopPropagation(); onBookNow(room); }}>BOOK NOW</button>
+      </div>
+    </div>
+  );
+}
+
+// Modal Component with Multi-Image Gallery
 function RoomModal({ room, wishlisted, onWishlist, onClose, onBookNow }) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const h = e => { if(e.key==='Escape') onClose(); };
@@ -877,78 +1004,105 @@ function RoomModal({ room, wishlisted, onWishlist, onClose, onBookNow }) {
     return () => { document.body.style.overflow=''; window.removeEventListener('keydown', h); };
   }, [onClose]);
 
-  const mapSrc = `https://maps.google.com/maps?q=${room.mapQuery}&output=embed&z=13`;
+  // Get images array from room data
+  const images = room.images && room.images.length > 0 
+    ? room.images.sort((a, b) => (a.order || 0) - (b.order || 0)).map(img => img.url)
+    : [room.imageUrl || TYPE_IMAGES[room.type] || TYPE_IMAGES.Standard];
+  
+  // Add more placeholder images if we have less than 4
+  while (images.length < 4 && images.length < 8) {
+    images.push(room.imageUrl || TYPE_IMAGES[room.type] || TYPE_IMAGES.Standard);
+  }
+  
+  const currentImage = images[currentImageIndex];
+  const hasMultipleImages = images.length > 1;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const goToImage = (index) => {
+    setCurrentImageIndex(index);
+  };
+
+  const mapSrc = `https://maps.google.com/maps?q=Cordova,Cebu,Philippines&output=embed&z=13`;
 
   return (
     <div className="modal-overlay" onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
       <div className="modal-box">
         <button className="modal-close" onClick={onClose}><X size={18}/></button>
-
-        {/* Images */}
-        <div className="modal-images">
-          <img className="modal-img-main" src={room.images[0]} alt={room.name}/>
-          <div className="modal-img-side">
-            <img src={room.images[1]} alt={room.name}/>
-            <img src={room.images[2]} alt={room.name}/>
-          </div>
+        
+        <div className="modal-gallery">
+          <img className="modal-gallery-main" src={currentImage} alt={`${room.name} - view ${currentImageIndex + 1}`}/>
+          
+          {hasMultipleImages && (
+            <>
+              <button className="modal-gallery-nav prev" onClick={prevImage}>
+                <ChevronLeft size={24}/>
+              </button>
+              <button className="modal-gallery-nav next" onClick={nextImage}>
+                <ChevronRight size={24}/>
+              </button>
+              <div className="modal-gallery-dots">
+                {images.map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className={`modal-gallery-dot ${idx === currentImageIndex ? 'active' : ''}`}
+                    onClick={() => goToImage(idx)}
+                  />
+                ))}
+              </div>
+              <div className="modal-gallery-counter">
+                {currentImageIndex + 1} / {images.length}
+              </div>
+            </>
+          )}
         </div>
-
-        <div className="modal-content">
-          {/* Title + Price */}
-          <div className="modal-top">
-            <div>
-              <h2 className="modal-title">{room.name}</h2>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div className="modal-price-big">₱{room.price}<span>/night</span></div>
-              <div style={{fontSize:13,color:'var(--muted)',marginTop:2}}>Up to {room.guests} guests</div>
-            </div>
-          </div>
-
-          <div className="modal-location"><MapPin size={14}/>{room.location}, Philippines</div>
-          <div className="modal-rating">
-            {[1,2,3,4,5].map(i=><Star key={i} size={14}/>)}
-            <span>{room.rating} · {room.reviews} reviews</span>
-          </div>
-
-          <p className="modal-desc">{room.longDesc}</p>
-
-          <div className="modal-divider"/>
-
-          {/* Inclusions & Amenities */}
-          <div className="modal-section-title">Inclusions & Amenities</div>
-          <div className="inclusions-grid">
-            {room.inclusions.map(({label, Icon}, i) => (
-              <div key={i} className="inclusion-chip"><Icon size={16}/>{label}</div>
+        
+        {hasMultipleImages && (
+          <div className="modal-thumbnails">
+            {images.map((img, idx) => (
+              <img 
+                key={idx}
+                src={img}
+                alt={`Thumbnail ${idx + 1}`}
+                className={`modal-thumbnail ${idx === currentImageIndex ? 'active' : ''}`}
+                onClick={() => goToImage(idx)}
+              />
             ))}
           </div>
-
-          <div className="modal-divider"/>
-
-          {/* Map */}
-          <div className="modal-section-title"><MapPin size={18} style={{display:'inline',marginRight:8,color:'var(--rust)'}}/>Location</div>
-          <div style={{fontSize:14,color:'var(--muted)',marginBottom:14}}>{room.location}, Philippines</div>
-          <div className="modal-map">
-            <iframe
-              title={`Map of ${room.location}`}
-              src={mapSrc}
-              allowFullScreen loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+        )}
+        
+        <div className="modal-content">
+          <div className="modal-top">
+            <div><h2 className="modal-title">{room.name}</h2></div>
+            <div style={{textAlign:'right'}}>
+              <div className="modal-price-big">₱{room.price}<span>/night</span></div>
+              <div style={{fontSize:13,color:'var(--muted)',marginTop:2}}>Up to {room.capacity || room.guests} guests</div>
+            </div>
           </div>
-
-          {/* Reserve + Wishlist */}
+          <div className="modal-location"><MapPin size={14}/>{room.location || 'Cordova, Cebu, Philippines'}</div>
+          <div className="modal-rating">{[...Array(5)].map((_,i)=><Star key={i} size={14}/>)}<span>{room.rating || 4.8} · {room.reviews || 128} reviews</span></div>
+          <p className="modal-desc">{room.longDesc || room.description || room.desc || 'Experience luxury and comfort in our carefully designed spaces.'}</p>
+          <div className="modal-divider"/>
+          <div className="modal-section-title">Inclusions & Amenities</div>
+          <div className="inclusions-grid">
+            {room.amenities && room.amenities.map((amenity, i) => {
+              const Icon = INCLUSIONS_ICONS[amenity] || Wifi;
+              return (<div key={i} className="inclusion-chip"><Icon size={16}/>{amenity}</div>);
+            })}
+          </div>
+          <div className="modal-divider"/>
+          <div className="modal-section-title"><MapPin size={18} style={{display:'inline',marginRight:8,color:'var(--rust)'}}/>Location</div>
+          <div style={{fontSize:14,color:'var(--muted)',marginBottom:14}}>{room.location || 'Cordova, Cebu, Philippines'}</div>
+          <div className="modal-map"><iframe title="Map" src={mapSrc} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div>
           <div className="modal-reserve-row">
-            <button className="modal-reserve-btn" onClick={onBookNow}>
-              <Calendar size={18}/> Reserve Now — ₱{room.price}/night
-            </button>
-            <button
-              className={`modal-wishlist-btn${wishlisted?' wishlisted':''}`}
-              onClick={e => { e.stopPropagation(); onWishlist(room.id); }}
-              title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            >
-              <Heart size={22}/>
-            </button>
+            <button className="modal-reserve-btn" onClick={() => onBookNow(room)}><Calendar size={18}/> Book Now — ₱{room.price}/night</button>
+            <button className={`modal-wishlist-btn${wishlisted?' wishlisted':''}`} onClick={e => { e.stopPropagation(); onWishlist(room.id); }}><Heart size={22}/></button>
           </div>
         </div>
       </div>
@@ -956,21 +1110,148 @@ function RoomModal({ room, wishlisted, onWishlist, onClose, onBookNow }) {
   );
 }
 
-/* ── Main ───────────────────────────────────────────────── */
 export default function Rooms({ room, onBack }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [rooms, setRooms] = useState([]);
+  const [filteredRooms, setFilteredRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [openBar, setOpenBar]       = useState(null);
-  const [location, setLocation]     = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
   const [startDate, setStartDate]   = useState(null);
   const [endDate, setEndDate]       = useState(null);
   const [hoverDate, setHoverDate]   = useState(null);
   const [calOffset, setCalOffset]   = useState(0);
-  const [guests, setGuests]         = useState({adults:0,children:0,infants:0,pets:0});
+  const [guests, setGuests]         = useState({adults:2,children:0,infants:0,pets:0});
   const [wishlisted, setWishlisted] = useState(new Set());
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showWishlist, setShowWishlist] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const barRef = useRef(null);
+  
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setIsLoggedIn(!!user);
+      setAuthChecking(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!authChecking && isLoggedIn) {
+      const pending = sessionStorage.getItem('pendingBooking');
+      if (pending) {
+        try {
+          const bookingData = JSON.parse(pending);
+          sessionStorage.removeItem('pendingBooking');
+          navigate('/login', { 
+            state: { 
+              selectedRoom: bookingData.room,
+              hotel: { id: 'solaz-main', name: 'Solaz Resort & Spa', location: 'Cordova, Cebu, Philippines' },
+              guests: bookingData.selectedDates?.guests || 2,
+              checkInDate: bookingData.selectedDates?.checkInDate || null,
+              checkOutDate: bookingData.selectedDates?.checkOutDate || null
+            } 
+          });
+        } catch (error) {
+          console.error('Error parsing pending booking:', error);
+          sessionStorage.removeItem('pendingBooking');
+        }
+      }
+    }
+  }, [authChecking, isLoggedIn, navigate]);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      setLoading(true);
+      try {
+        const roomsCollection = collection(db, 'rooms');
+        const roomsQuery = query(roomsCollection, orderBy('createdAt', 'desc'));
+        const roomsSnapshot = await getDocs(roomsQuery);
+        
+        if (roomsSnapshot.empty) {
+          setRooms([]);
+          setFilteredRooms([]);
+          setLoading(false);
+          return;
+        }
+        
+        const roomsData = roomsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || 'Luxury Room',
+            type: data.type || 'Standard',
+            badge: getBadgeByType(data.type),
+            price: data.ratePerDay || 180,
+            ratePerDay: data.ratePerDay || 180,
+            guests: data.capacity || 2,
+            capacity: data.capacity || 2,
+            rating: 4.8,
+            reviews: 128,
+            location: data.floor ? `${data.type} Room, Floor ${data.floor}` : `${data.type} Room`,
+            desc: data.description || 'A serene haven designed for your comfort.',
+            longDesc: data.description || 'Experience luxury and comfort in our carefully designed spaces.',
+            imageUrl: data.imageUrl || TYPE_IMAGES[data.type] || TYPE_IMAGES.Standard,
+            images: data.images || [], // Add multiple images support
+            amenities: data.amenities || ['WiFi', 'AC', 'TV'],
+            status: data.status
+          };
+        });
+        
+        setRooms(roomsData);
+        setFilteredRooms(roomsData);
+      } catch (error) {
+        console.error("Error fetching rooms:", error);
+        setRooms([]);
+        setFilteredRooms([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRooms();
+  }, []);
+
+  // Filter rooms based on all search criteria
+  useEffect(() => {
+    if (!rooms.length) return;
+    
+    let filtered = [...rooms];
+    const totalGuestsCount = guests.adults + guests.children;
+    
+    // Filter by location/room name search
+    if (locationFilter.trim()) {
+      const searchTerm = locationFilter.toLowerCase().trim();
+      filtered = filtered.filter(room => 
+        room.name.toLowerCase().includes(searchTerm) || 
+        room.type.toLowerCase().includes(searchTerm) ||
+        (room.desc && room.desc.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    // Filter by guest capacity
+    if (totalGuestsCount > 0) {
+      filtered = filtered.filter(room => (room.capacity || room.guests) >= totalGuestsCount);
+    }
+    
+    // Apply wishlist filter if active
+    if (showWishlist) {
+      filtered = filtered.filter(r => wishlisted.has(r.id));
+    }
+    
+    // Apply type filter
+    if (activeFilter === 'popular') {
+      filtered = filtered.filter(r => r.badge === 'Classic' || r.badge === 'Premium');
+    } else if (activeFilter === 'luxury') {
+      filtered = filtered.filter(r => r.badge === 'Luxury' || r.badge === 'VIP Suite');
+    }
+    
+    setFilteredRooms(filtered);
+  }, [rooms, locationFilter, guests.adults, guests.children, showWishlist, wishlisted, activeFilter]);
 
   const today = new Date(); today.setHours(0,0,0,0);
   const baseDate = new Date(today.getFullYear(), today.getMonth()+calOffset, 1);
@@ -998,13 +1279,47 @@ export default function Rooms({ room, onBack }) {
     });
   };
 
-  const handleBookNow = (roomId) => {
-    // Navigate to login/signup page when book now is clicked
-    navigate('/login');
+  const handleBookNow = (room) => {
+    if (!isLoggedIn) {
+      const bookingData = {
+        roomId: room.id,
+        room: room,
+        selectedDates: {
+          checkInDate: startDate ? startDate.toISOString().split('T')[0] : null,
+          checkOutDate: endDate ? endDate.toISOString().split('T')[0] : null,
+          guests: totalGuests
+        },
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData));
+      navigate('/login', { 
+        state: { 
+          from: location.pathname,
+          returnTo: '/rooms',
+          selectedRoom: room
+        } 
+      });
+      return;
+    }
+    
+    navigate('/login', { 
+      state: { 
+        selectedRoom: room,
+        hotel: { id: 'solaz-main', name: 'Solaz Resort & Spa', location: 'Cordova, Cebu, Philippines' },
+        guests: totalGuests,
+        checkInDate: startDate ? startDate.toISOString().split('T')[0] : null,
+        checkOutDate: endDate ? endDate.toISOString().split('T')[0] : null
+      } 
+    });
   };
 
-  const handleBack = () => {
-    navigate(-1); // Go back to previous page
+  const clearAllFilters = () => {
+    setLocationFilter('');
+    setStartDate(null);
+    setEndDate(null);
+    setGuests({adults:2, children:0, infants:0, pets:0});
+    setActiveFilter('all');
+    setShowWishlist(false);
   };
 
   useEffect(() => {
@@ -1013,34 +1328,32 @@ export default function Rooms({ room, onBack }) {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const filterTabs = ['all', 'popular', 'new', 'luxury'];
-  
-  const filteredRooms = () => {
-    let rooms = showWishlist ? ROOMS.filter(r => wishlisted.has(r.id)) : ROOMS;
-    
-    if (activeFilter === 'popular') {
-      rooms = rooms.filter(r => r.badge === 'Best Seller' || r.badge === 'Top Pick');
-    } else if (activeFilter === 'new') {
-      rooms = rooms.filter(r => r.badge === 'New');
-    } else if (activeFilter === 'luxury') {
-      rooms = rooms.filter(r => r.badge === 'Luxury' || r.badge === 'Presidential');
+  useEffect(() => {
+    if (room) {
+      setSelectedRoom(room);
     }
-    
-    return rooms;
-  };
+  }, [room]);
 
-  const displayedRooms = filteredRooms();
+  const isSearchActive = locationFilter.trim() !== '' || (startDate && endDate) || totalGuests > 2 || activeFilter !== 'all';
+
+  if (loading || authChecking) {
+    return (
+      <>
+        <style>{STYLES}</style>
+        <div className="rooms-page">
+          <button className="rooms-back-btn" onClick={() => navigate('/')}><ArrowLeft size={18}/> Back to Home</button>
+          <div className="rp-hero"><h1 className="rp-hero-title">Our Luxury Accommodations</h1><p className="rp-hero-subtitle">Experience unparalleled comfort and breathtaking views in our meticulously designed rooms and suites.</p></div>
+          <div className="rp-grid"><div className="loading-spinner"><div className="spinner"></div><p style={{ color: 'var(--muted)' }}>Loading luxurious rooms...</p></div></div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="rooms-page">
-
-        {/* Back button */}
-        <button className="rooms-back-btn" onClick={onBack}>      
-        <ArrowLeft size={18} />
-          Back to Home
-        </button>
+        <button className="rooms-back-btn" onClick={onBack || (() => navigate('/'))}><ArrowLeft size={18}/> Back to Home</button>
 
         {selectedRoom && (
           <RoomModal
@@ -1048,36 +1361,28 @@ export default function Rooms({ room, onBack }) {
             wishlisted={wishlisted.has(selectedRoom.id)}
             onWishlist={toggleWishlist}
             onClose={() => setSelectedRoom(null)}
-            onBookNow={() => handleBookNow(selectedRoom.id)}
+            onBookNow={handleBookNow}
           />
         )}
 
-        {/* Hero Section */}
         <div className="rp-hero">
           <h1 className="rp-hero-title">Our Luxury Accommodations</h1>
-          <p className="rp-hero-subtitle">
-            Experience unparalleled comfort and breathtaking views in our meticulously designed rooms and suites.
-          </p>
+          <p className="rp-hero-subtitle">Experience unparalleled comfort and breathtaking views in our meticulously designed rooms and suites.</p>
         </div>
 
-        {/* Search Bar - Centered */}
         <div className="rp-search-wrap">
           <div className="airbnb-bar" ref={barRef}>
-            {/* Room */}
-            <div className={`ab-field${openBar==='room'?' open':''}`} style={{flex:1.6}}
-              onClick={() => setOpenBar(o => o==='room'?null:'room')}>
+            <div className={`ab-field${openBar==='room'?' open':''}`} style={{flex:1.6}} onClick={() => setOpenBar(o => o==='room'?null:'room')}>
               <div className="ab-label">Room</div>
               {openBar==='room' ? (
-                <input className="ab-input" placeholder="Search room" value={location}
-                  onChange={e=>setLocation(e.target.value)} onClick={e=>e.stopPropagation()} autoFocus/>
+                <input className="ab-input" placeholder="Search by room name or type" value={locationFilter}
+                  onChange={e=>setLocationFilter(e.target.value)} onClick={e=>e.stopPropagation()} autoFocus/>
               ) : (
-                <div className={`ab-value${location?' filled':''}`}>{location||'Search rooms'}</div>
+                <div className={`ab-value${locationFilter?' filled':''}`}>{locationFilter||'Search rooms by name or type'}</div>
               )}
             </div>
             <div className="ab-sep"/>
-            {/* When */}
-            <div className={`ab-field${openBar==='when'?' open':''}`} style={{flex:1.3}}
-              onClick={() => setOpenBar(o => o==='when'?null:'when')}>
+            <div className={`ab-field${openBar==='when'?' open':''}`} style={{flex:1.3}} onClick={() => setOpenBar(o => o==='when'?null:'when')}>
               <div className="ab-label">When</div>
               <div className={`ab-value${whenLabel?' filled':''}`}>{whenLabel||'Add dates'}</div>
               {openBar==='when' && (
@@ -1098,9 +1403,7 @@ export default function Rooms({ room, onBack }) {
               )}
             </div>
             <div className="ab-sep"/>
-            {/* Who */}
-            <div className={`ab-field${openBar==='who'?' open':''}`} style={{flex:0.9}}
-              onClick={() => setOpenBar(o => o==='who'?null:'who')}>
+            <div className={`ab-field${openBar==='who'?' open':''}`} style={{flex:0.9}} onClick={() => setOpenBar(o => o==='who'?null:'who')}>
               <div className="ab-label">Who</div>
               <div className={`ab-value${guestLabel?' filled':''}`}>{guestLabel||'Add guests'}</div>
               {openBar==='who' && (
@@ -1127,106 +1430,54 @@ export default function Rooms({ room, onBack }) {
           </div>
         </div>
 
-        {/* Header */}
         <div className="rp-header">
           <div className="rp-section-label">EXCLUSIVE STAYS</div>
           <h1 className="rp-title">Our <span>Rooms</span> & Suites</h1>
-          <p className="rp-subtitle">
-            Each of our accommodations is thoughtfully designed to provide the perfect blend of luxury, comfort, and Filipino hospitality.
-          </p>
+          <p className="rp-subtitle">Each of our accommodations is thoughtfully designed to provide the perfect blend of luxury, comfort, and Filipino hospitality.</p>
         </div>
 
-        {/* Filter Bar */}
         <div className="rp-filter-bar">
           <div className="rp-filter-tabs">
-            <button 
-              className={`rp-filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('all')}
-            >
-              All Rooms
-            </button>
-            <button 
-              className={`rp-filter-tab ${activeFilter === 'popular' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('popular')}
-            >
-              Most Popular
-            </button>
-            <button 
-              className={`rp-filter-tab ${activeFilter === 'new' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('new')}
-            >
-              New Arrivals
-            </button>
-            <button 
-              className={`rp-filter-tab ${activeFilter === 'luxury' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('luxury')}
-            >
-              Luxury Collection
-            </button>
+            <button className={`rp-filter-tab ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>All Rooms ({rooms.length})</button>
+            <button className={`rp-filter-tab ${activeFilter === 'popular' ? 'active' : ''}`} onClick={() => setActiveFilter('popular')}>Most Popular</button>
+            <button className={`rp-filter-tab ${activeFilter === 'luxury' ? 'active' : ''}`} onClick={() => setActiveFilter('luxury')}>Luxury Collection</button>
           </div>
-          <button
-            className={`wishlist-toggle-btn${showWishlist?' active':''}`}
-            onClick={() => setShowWishlist(s=>!s)}
-          >
+          <button className={`wishlist-toggle-btn${showWishlist?' active':''}`} onClick={() => setShowWishlist(s=>!s)}>
             <Heart size={15} style={showWishlist?{fill:'white'}:{}}/>
             {showWishlist ? `Wishlist (${wishlisted.size})` : 'View Wishlist'}
           </button>
         </div>
 
-        {/* Grid */}
+        {isSearchActive && (
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div className="search-results-badge">
+              Found {filteredRooms.length} room{filteredRooms.length !== 1 ? 's' : ''} matching your search
+              <button className="clear-filters-btn" onClick={clearAllFilters}>Clear all filters</button>
+            </div>
+          </div>
+        )}
+
         <div className="rp-grid">
-          {displayedRooms.length === 0 && (
+          {filteredRooms.length === 0 && (
             <div className="wishlist-empty">
-              <div className="wishlist-empty-icon">🤍</div>
-              <div className="wishlist-empty-title">Your wishlist is empty</div>
-              <p className="wishlist-empty-sub">Click the heart on any room to save it here.</p>
+              <div className="wishlist-empty-icon">🏨</div>
+              <div className="wishlist-empty-title">{showWishlist ? 'Your wishlist is empty' : 'No rooms found'}</div>
+              <p className="wishlist-empty-sub">
+                {showWishlist 
+                  ? 'Click the heart on any room to save it here.' 
+                  : 'Try adjusting your search or filter criteria.'}
+              </p>
             </div>
           )}
-          {displayedRooms.map(room => (
-            <div key={room.id} className="room-card" onClick={() => setSelectedRoom(room)}>
-              <div className="card-img-wrap">
-                <img className="card-img" src={room.image} alt={room.name}/>
-                <div className="card-badge">{room.badge}</div>
-                <button
-                  className={`card-heart${wishlisted.has(room.id)?' wishlisted':''}`}
-                  onClick={e => { e.stopPropagation(); toggleWishlist(room.id); }}
-                  title={wishlisted.has(room.id) ? 'Remove from wishlist' : 'Save to wishlist'}
-                >
-                  <Heart size={18}/>
-                </button>
-              </div>
-              <div className="card-body">
-                <div className="card-name">{room.name}</div>
-                <div className="card-location"><MapPin size={12}/>{room.location}</div>
-                
-                {/* Amenities chips in the style of the image */}
-                <div className="card-amenities-row">
-                  {room.amenities.map((amenity, i) => (
-                    <div key={i} className={`card-amenity-chip ${amenity.includes('24/7') ? 'highlight' : ''}`}>
-                      {amenity}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="card-desc">{room.desc}</div>
-                
-                <div className="card-footer">
-                  <div className="card-price">₱{room.price}<span>/night</span></div>
-                  <div className="card-rating"><Star size={14}/>{room.rating} ({room.reviews})</div>
-                </div>
-                
-                {/* BOOK NOW button */}
-                <button 
-                  className="card-book-btn"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    handleBookNow(room.id);
-                  }}
-                >
-                  BOOK NOW
-                </button>
-              </div>
-            </div>
+          {filteredRooms.map(room => (
+            <RoomCard 
+              key={room.id}
+              room={room}
+              wishlisted={wishlisted.has(room.id)}
+              onWishlist={toggleWishlist}
+              onClick={setSelectedRoom}
+              onBookNow={handleBookNow}
+            />
           ))}
         </div>
       </div>

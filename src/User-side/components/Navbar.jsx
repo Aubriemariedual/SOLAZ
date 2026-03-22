@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogIn, UserPlus, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { useNavigate } from 'react-router-dom';
 
 /* ─────────────────────────────────────────────────────────────
    DARK MODE HOOK
@@ -195,7 +195,9 @@ const NAV_STYLES = `
   }
   .sn-icon:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
 
-  .sn-theme { transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.45s ease; }
+  .sn-theme {
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.45s ease;
+  }
   .sn-theme:hover { transform: rotate(25deg); }
 
   .sn-cta {
@@ -225,93 +227,23 @@ const NAV_STYLES = `
   .sn-cta:active .sn-cta-inner { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.18); }
   .sn-cta:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; border-radius: 11px; }
 
-  /* ══ USER DROPDOWN ═══════════════════════════════════ */
-  .sn-user-wrap { position: relative; }
-
-  .sn-user-btn {
+  /* ══ DARK MODE ONLY ICON ═══════════════════════════════════ */
+  .sn-darkmode-only {
     width: 38px; height: 38px; border-radius: 10px;
     border: 1px solid var(--border);
     background: transparent;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--nm); outline: none;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.45s ease;
   }
-  .sn-user-btn svg { width: 16px; height: 16px; }
-  .sn-user-btn:hover, .sn-user-btn.open {
+  .sn-darkmode-only svg { width: 16px; height: 16px; transition: color 0.2s; }
+  .sn-darkmode-only:hover {
     background: var(--nhb);
     color: var(--nat);
     border-color: var(--border-strong);
+    transform: rotate(25deg);
   }
-  .sn-user-btn:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
-
-  .sn-drop {
-    position: absolute; top: calc(100% + 10px); right: 0;
-    min-width: 220px;
-    background: var(--ndb);
-    border: 1px solid var(--border-strong);
-    border-radius: 16px;
-    box-shadow: var(--nds);
-    padding: 6px;
-    transform-origin: top right;
-    animation: dropIn 0.22s cubic-bezier(.34,1.56,.64,1) forwards;
-    z-index: 300;
-  }
-  @keyframes dropIn {
-    from { opacity: 0; transform: scale(0.92) translateY(-8px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
-  .sn-drop-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; border-radius: 10px;
-    font-size: 12.5px; font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--nt);
-    text-decoration: none; border: none; background: none;
-    width: 100%; cursor: pointer; outline: none;
-    transition: background 0.16s, color 0.16s;
-    font-family: 'Montserrat', sans-serif;
-    white-space: nowrap;
-  }
-  .sn-drop-item:hover { background: var(--nhb); color: var(--nat); }
-  .sn-drop-item svg { width: 15px; height: 15px; color: var(--nm); flex-shrink: 0; transition: color 0.16s; }
-  .sn-drop-item:hover svg { color: var(--nat); }
-  .sn-drop-item:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }
-
-  .sn-divider { height: 1px; background: var(--border); margin: 5px 0; }
-
-  .sn-theme-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px; border-radius: 10px; cursor: pointer;
-    transition: background 0.16s;
-  }
-  .sn-theme-row:hover { background: var(--nhb); }
-  .sn-theme-label {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 12.5px; font-weight: 500;
-    letter-spacing: 0.02em; color: var(--nt);
-    font-family: 'Montserrat', sans-serif;
-  }
-  .sn-theme-label svg { width: 15px; height: 15px; color: var(--nm); }
-
-  .sn-pill {
-    width: 42px; height: 24px; border-radius: 100px; border: none;
-    cursor: pointer; position: relative;
-    transition: background 0.3s; flex-shrink: 0; outline: none;
-  }
-  .sn-pill.on  { background: #2A1F1B; }
-  .sn-pill.off { background: #1E1612; }
-  [data-theme="dark"] .sn-pill.off { background: #241A16; }
-  .sn-pill-thumb {
-    position: absolute; top: 4px;
-    width: 16px; height: 16px; border-radius: 50%;
-    background: white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.22);
-    transition: left 0.28s cubic-bezier(.34,1.56,.64,1);
-  }
-  .sn-pill.on  .sn-pill-thumb { left: 22px; }
-  .sn-pill.off .sn-pill-thumb { left: 4px; }
-  .sn-pill:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+  .sn-darkmode-only:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
 
   /* ══ HAMBURGER ═══════════════════════════════════════ */
   .sn-burger {
@@ -358,35 +290,39 @@ const NAV_STYLES = `
 
   .sn-mob-div { height: 1px; background: var(--border); margin: 10px 0; }
 
-  /* Mobile auth buttons */
-  .sn-mob-auth {
-    display: flex; align-items: center; gap: 10px;
-    padding: 11px 14px; border-radius: 10px;
-    font-size: 12px; font-weight: 600;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--nm);
-    background: none; border: none; cursor: pointer; outline: none;
-    transition: background 0.16s, color 0.16s;
-    width: 100%; text-align: left;
-    font-family: 'Montserrat', sans-serif;
-  }
-  .sn-mob-auth svg { width: 16px; height: 16px; color: var(--nm); }
-  .sn-mob-auth:hover { background: var(--nhb); color: var(--nat); }
-  .sn-mob-auth:hover svg { color: var(--nat); }
-
-  .sn-mob-theme {
+  /* Mobile dark mode only */
+  .sn-mob-darkmode {
     display: flex; align-items: center; justify-content: space-between;
     padding: 11px 14px; border-radius: 10px; cursor: pointer;
     transition: background 0.16s;
   }
-  .sn-mob-theme:hover { background: var(--nhb); }
-  .sn-mob-theme-label {
+  .sn-mob-darkmode:hover { background: var(--nhb); }
+  .sn-mob-darkmode-label {
     display: flex; align-items: center; gap: 10px;
     font-size: 12px; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--nt); font-family: 'Montserrat', sans-serif;
   }
-  .sn-mob-theme-label svg { width: 16px; height: 16px; color: var(--nm); }
+  .sn-mob-darkmode-label svg { width: 16px; height: 16px; color: var(--nm); }
+
+  .sn-pill {
+    width: 42px; height: 24px; border-radius: 100px; border: none;
+    cursor: pointer; position: relative;
+    transition: background 0.3s; flex-shrink: 0; outline: none;
+  }
+  .sn-pill.on  { background: #2A1F1B; }
+  .sn-pill.off { background: #1E1612; }
+  [data-theme="dark"] .sn-pill.off { background: #241A16; }
+  .sn-pill-thumb {
+    position: absolute; top: 4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+    transition: left 0.28s cubic-bezier(.34,1.56,.64,1);
+  }
+  .sn-pill.on  .sn-pill-thumb { left: 22px; }
+  .sn-pill.off .sn-pill-thumb { left: 4px; }
+  .sn-pill:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
 
   .sn-mob-cta {
     display: flex; align-items: center; justify-content: center;
@@ -409,61 +345,116 @@ const NAV_STYLES = `
    COMPONENT
 ───────────────────────────────────────────────────────────── */
 export default function Navbar() {
-  const navigate = useNavigate(); // Add this hook
-  const [open,    setOpen]    = useState(false);
-  const [drop,    setDrop]    = useState(false);
-  const [dark,    setDark]    = useDarkMode();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [dark, setDark] = useDarkMode();
   const [section, setSection] = useState('home');
-  const dropRef = useRef(null);
+  const [isRoomsPage, setIsRoomsPage] = useState(false);
 
   const links = [
-    { label: 'Home',    id: 'home',    target: null },
-    { label: 'Rooms',   id: 'rooms',   target: 'rooms-section' },
-    { label: 'Gallery', id: 'gallery', target: 'gallery-section' },
-    { label: 'Contact', id: 'contact', target: 'contact-section' },
-    { label: 'FAQs',    id: 'faqs',    target: 'faqs-section' },
+    { label: 'Home',    id: 'home',    target: null, path: '/home' },
+    { label: 'Rooms',   id: 'rooms',   target: 'rooms-section', path: '/rooms' },
+    { label: 'Gallery', id: 'gallery', target: 'gallery-section', path: '/gallery' },
+    { label: 'Contact', id: 'contact', target: 'contact-section', path: '/contact' },
+    { label: 'FAQs',    id: 'faqs',    target: 'faqs-section', path: '/faqs' },
   ];
 
-  const go = (target, id) => {
-    setOpen(false); setDrop(false); setSection(id);
-    if (!target) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const go = (target, id, path) => {
+    setOpen(false);
+    setSection(id);
+    
+    // If we're navigating to rooms page
+    if (path === '/rooms') {
+      navigate(path);
+      return;
+    }
+    
+    // For other pages, handle scroll or navigation
+    if (path && path !== '/') {
+      navigate(path);
+      return;
+    }
+    
+    // For home page sections
+    if (!target) { 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+      return; 
+    }
     const el = document.getElementById(target);
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: 'smooth' });
   };
 
-  // Add this new function for handling the Book Now button
   const handleBookNow = () => {
     setOpen(false);
-    setDrop(false);
-    navigate('/room'); // Redirect to /room page
+    setSection('rooms');
+    setIsRoomsPage(true);
+    navigate('/rooms'); 
   };
+
+  // Check if we're on rooms page
+  useEffect(() => {
+    const checkCurrentPage = () => {
+      const path = window.location.pathname;
+      const isRooms = path === '/rooms';
+      setIsRoomsPage(isRooms);
+      if (isRooms) {
+        setSection('rooms');
+      } else if (path === '/') {
+        // On home page, let scroll handler manage section
+        const ids = links.filter(l => l.target).map(l => ({ el: l.target, id: l.id }));
+        const y = window.scrollY + 90;
+        let cur = 'home';
+        for (const { el, id } of ids) {
+          const node = document.getElementById(el);
+          if (node && y >= node.offsetTop) cur = id;
+        }
+        setSection(cur);
+      } else {
+        // For other pages like gallery, contact, faqs
+        const pageId = path.substring(1); // remove leading slash
+        if (links.some(link => link.id === pageId)) {
+          setSection(pageId);
+        }
+      }
+    };
+    
+    checkCurrentPage();
+    
+    // Listen for route changes
+    window.addEventListener('popstate', checkCurrentPage);
+    return () => window.removeEventListener('popstate', checkCurrentPage);
+  }, []);
 
   useEffect(() => {
     const ids = links.filter(l => l.target).map(l => ({ el: l.target, id: l.id }));
     const onScroll = () => {
-      const y = window.scrollY + 90;
-      let cur = 'home';
-      for (const { el, id } of ids) {
-        const node = document.getElementById(el);
-        if (node && y >= node.offsetTop) cur = id;
+      // Only update section based on scroll if we're on home page
+      if (window.location.pathname === '/') {
+        const y = window.scrollY + 90;
+        let cur = 'home';
+        for (const { el, id } of ids) {
+          const node = document.getElementById(el);
+          if (node && y >= node.offsetTop) cur = id;
+        }
+        setSection(cur);
       }
-      setSection(cur);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
-    const fn = e => { if (dropRef.current && !dropRef.current.contains(e.target)) setDrop(false); };
-    document.addEventListener('mousedown', fn);
-    return () => document.removeEventListener('mousedown', fn);
-  }, []);
-
-  useEffect(() => {
-    const fn = e => { if (e.key === 'Escape') { setDrop(false); setOpen(false); } };
+    const fn = e => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('keydown', fn);
     return () => document.removeEventListener('keydown', fn);
   }, []);
+
+  // Determine if a link should be active
+  const isActive = (id, path) => {
+    if (isRoomsPage && id === 'rooms') return true;
+    if (path === '/') return section === id && !isRoomsPage;
+    return section === id;
+  };
 
   return (
     <>
@@ -472,97 +463,46 @@ export default function Navbar() {
       <nav className="sn" role="navigation" aria-label="Main navigation">
         <div className="sn-inner">
 
-          {/* ── Logo ───────────────────────────────── */}
-          <button className="sn-logo" onClick={() => go(null, 'home')} aria-label="Go to top">
+          {/* Logo */}
+          <button className="sn-logo" onClick={() => go(null, 'home', '/')} aria-label="Go to top">
             <img src="/src/assets/SolazLogo.png" alt="Solaz" />
           </button>
 
-          {/* ── Center links ───────────────────────── */}
+          {/* Center links */}
           <div className="sn-links" role="list">
-            {links.map(({ label, id, target }) => (
+            {links.map(({ label, id, target, path }) => (
               <button
                 key={id}
                 role="listitem"
-                className={`sn-link${section === id ? ' active' : ''}`}
-                onClick={() => go(target, id)}
-                aria-current={section === id ? 'page' : undefined}
+                className={`sn-link${isActive(id, path) ? ' active' : ''}`}
+                onClick={() => go(target, id, path)}
+                aria-current={isActive(id, path) ? 'page' : undefined}
               >
                 {label}
               </button>
             ))}
           </div>
 
-          {/* ── Right cluster ───────────────────────── */}
+          {/* Right cluster */}
           <div className="sn-right">
 
-            {/* Book Now - Updated to use handleBookNow */}
+            {/* Book Now */}
             <button
               className="sn-cta"
-              onClick={handleBookNow} // Changed from go('contact-section', 'contact')
+              onClick={handleBookNow}
               aria-label="Book a stay"
             >
               <span className="sn-cta-inner">Book Now</span>
             </button>
 
-            {/* ── User icon → dropdown (desktop) ─── */}
-            <div className="sn-user-wrap" ref={dropRef}>
-              <button
-                className={`sn-user-btn${drop ? ' open' : ''}`}
-                onClick={() => setDrop(d => !d)}
-                aria-label="Account menu"
-                aria-expanded={drop}
-                aria-haspopup="true"
-              >
-                <User />
-              </button>
-
-              {drop && (
-                <div className="sn-drop" role="menu" aria-label="Account options">
-                  {/* Log In */}
-                  <button
-                    className="sn-drop-item"
-                    role="menuitem"
-                    onClick={() => { setDrop(false); navigate('/login'); }} // Updated to use navigate
-                  >
-                    <LogIn />
-                    Log In
-                  </button>
-
-                  {/* Sign Up */}
-                  <button
-                    className="sn-drop-item"
-                    role="menuitem"
-                    onClick={() => { setDrop(false); navigate('/signup'); }} // Updated to use navigate
-                  >
-                    <UserPlus />
-                    Sign Up
-                  </button>
-
-                  <div className="sn-divider" aria-hidden="true" />
-
-                  {/* Dark Mode toggle */}
-                  <div
-                    className="sn-theme-row"
-                    onClick={() => setDark(d => !d)}
-                    role="menuitem"
-                    aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                  >
-                    <div className="sn-theme-label" aria-hidden="true">
-                      <span>Dark Mode</span>
-                    </div>
-                    <button
-                      className={`sn-pill${dark ? ' on' : ' off'}`}
-                      onClick={e => { e.stopPropagation(); setDark(d => !d); }}
-                      role="switch"
-                      aria-checked={dark}
-                      aria-label="Toggle dark mode"
-                    >
-                      <div className="sn-pill-thumb" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Dark Mode Only Icon */}
+            <button
+              className="sn-darkmode-only"
+              onClick={() => setDark(d => !d)}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {dark ? <Sun /> : <Moon />}
+            </button>
 
             {/* Hamburger (mobile) */}
             <button
@@ -576,15 +516,15 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* ── Mobile drawer ───────────────────────── */}
+        {/* Mobile drawer */}
         {open && (
           <div className="sn-drawer" role="navigation" aria-label="Mobile navigation">
-            {links.map(({ label, id, target }) => (
+            {links.map(({ label, id, target, path }) => (
               <button
                 key={id}
-                className={`sn-mob-link${section === id ? ' active' : ''}`}
-                onClick={() => go(target, id)}
-                aria-current={section === id ? 'page' : undefined}
+                className={`sn-mob-link${isActive(id, path) ? ' active' : ''}`}
+                onClick={() => go(target, id, path)}
+                aria-current={isActive(id, path) ? 'page' : undefined}
               >
                 {label}
               </button>
@@ -592,26 +532,15 @@ export default function Navbar() {
 
             <div className="sn-mob-div" aria-hidden="true" />
 
-            {/* Auth options in mobile drawer - Updated to use navigate */}
-            <button className="sn-mob-auth" onClick={() => { setOpen(false); navigate('/login'); }}>
-              <LogIn />
-              Log In
-            </button>
-            <button className="sn-mob-auth" onClick={() => { setOpen(false); navigate('/signup'); }}>
-              <UserPlus />
-              Sign Up
-            </button>
-
-            <div className="sn-mob-div" aria-hidden="true" />
-
             {/* Dark mode toggle in mobile drawer */}
             <div
-              className="sn-mob-theme"
+              className="sn-mob-darkmode"
               onClick={() => setDark(d => !d)}
               role="button"
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              <div className="sn-mob-theme-label" aria-hidden="true">
+              <div className="sn-mob-darkmode-label" aria-hidden="true">
+                {dark ? <Sun /> : <Moon />}
                 <span>Dark Mode</span>
               </div>
               <button
@@ -625,10 +554,10 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Mobile Book Now button - Updated to use handleBookNow */}
+            {/* Mobile Book Now button */}
             <button
               className="sn-mob-cta"
-              onClick={handleBookNow} // Changed from go('contact-section', 'contact')
+              onClick={handleBookNow}
             >
               Book Now
             </button>
@@ -638,3 +567,24 @@ export default function Navbar() {
     </>
   );
 }
+
+// Add these icon components if you don't have them imported
+const Sun = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/>
+    <line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/>
+    <line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+);
+
+const Moon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
