@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  BedDouble, Images, CalendarDays, LogOut, ChevronRight, Leaf
+  BedDouble, Images, CalendarDays, LogOut, ChevronRight, Leaf, Users
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
@@ -11,9 +11,10 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 /* ─── Nav config ─────────────────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { id: 'bookings', label: 'Bookings',  icon: CalendarDays, path: '/admin/bookings' },
-  { id: 'rooms',    label: 'Rooms',     icon: BedDouble,    path: '/admin/rooms'              },
-  { id: 'gallery',  label: 'Gallery',   icon: Images,       path: '/admin/gallery'            },
+  { id: 'bookings',  label: 'Bookings',  icon: CalendarDays, path: '/admin/bookings' },
+  { id: 'rooms',     label: 'Rooms',     icon: BedDouble,    path: '/admin/rooms'    },
+  { id: 'gallery',   label: 'Gallery',   icon: Images,       path: '/admin/gallery'  },
+  { id: 'contacts',  label: 'Contacts',  icon: Users,        path: '/admin/contacts' },
 ];
 
 /* ─── Layout wrapper (use this in your router) ───────────────────────────── */

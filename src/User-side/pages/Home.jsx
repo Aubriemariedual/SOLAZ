@@ -5,7 +5,7 @@ import { Search, MapPin, Calendar, Users, Star, Heart, ArrowRight, Headphones, B
          Home as HomeIcon, Maximize2, Eye, Utensils, Users2, ChevronDown, ImageIcon } from 'lucide-react';
 import Rooms from './Rooms';
 import { db } from '../../../firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 
 /* ─────────────────────────────────────────────────────────────
    STYLES (keep all your existing styles - they remain the same)
@@ -486,6 +486,7 @@ const styles = `
     cursor: pointer; transition: background 0.2s; margin-top: 8px;
   }
   .contact-btn:hover { background: var(--forest2); }
+  .contact-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
   .contact-info-col {
     display: flex; flex-direction: column; gap: 12px;
@@ -526,6 +527,35 @@ const styles = `
   }
   .contact-map-wrap iframe {
     width: 100%; height: 100%; display: block; border: none;
+  }
+
+  /* Contact status message */
+  .contact-status {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease;
+  }
+  .contact-status.success {
+    background: rgba(45, 80, 22, 0.1);
+    border-left: 3px solid var(--forest);
+    color: var(--forest);
+  }
+  .contact-status.error {
+    background: rgba(139, 58, 42, 0.1);
+    border-left: 3px solid var(--rust);
+    color: var(--rust);
+  }
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
@@ -618,6 +648,16 @@ export default function Home() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [faqOpen, setFaqOpen] = useState(null);
   const barRef = useRef(null);
+
+  // Contact form state
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
+  });
+  const [contactStatus, setContactStatus] = useState({ type: '', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch rooms and gallery images from Firebase
   useEffect(() => {
@@ -741,6 +781,59 @@ export default function Home() {
     setCarouselIdx(0);
     
   }, [rooms, location, startDate, endDate, guests.adults, guests.children]);
+
+  // Handle contact form submission
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.message.trim()) {
+      setContactStatus({ type: 'error', message: 'Please fill in all fields' });
+      setTimeout(() => setContactStatus({ type: '', message: '' }), 3000);
+      return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactForm.email)) {
+      setContactStatus({ type: 'error', message: 'Please enter a valid email address' });
+      setTimeout(() => setContactStatus({ type: '', message: '' }), 3000);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Save to Firebase
+      const contactRef = collection(db, 'contacts');
+      await addDoc(contactRef, {
+        name: contactForm.name.trim(),
+        email: contactForm.email.trim(),
+        phone: contactForm.phone.trim() || null,
+        message: contactForm.message.trim(),
+        status: 'unread',
+        starred: false,
+        createdAt: serverTimestamp(),
+        date: new Date().toISOString()
+      });
+      
+      // Show success message
+      setContactStatus({ type: 'success', message: 'Message sent successfully! We\'ll get back to you soon.' });
+      
+      // Reset form
+      setContactForm({ name: '', email: '', phone: '', message: '' });
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setContactStatus({ type: '', message: '' }), 5000);
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setContactStatus({ type: 'error', message: 'Failed to send message. Please try again.' });
+      setTimeout(() => setContactStatus({ type: '', message: '' }), 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const totalGuests = guests.adults + guests.children;
   const guestLabel = totalGuests === 0 ? null : totalGuests === 1 ? '1 guest' : `${totalGuests} guests`
@@ -1095,19 +1188,84 @@ export default function Home() {
             <div className="contact-left">
               <div className="contact-h2">Get in touch</div>
               <p className="contact-sub">Reach out and let us help you find your perfect space.</p>
-              <div className="contact-field">
-                <label>Full name</label>
-                <input className="contact-input" placeholder="Full Name" type="text"/>
+              
+              {/* Status message */}
+              {contactStatus.message && (
+                <div className={`contact-status ${contactStatus.type}`}>
+                  {contactStatus.message}
+                </div>
+              )}
+              
+              <form onSubmit={handleContactSubmit}>
+                <div className="contact-field">
+                  <label>Full name *</label>
+                  <input 
+                    className="contact-input" 
+                    placeholder="Full Name" 
+                    type="text"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="contact-field">
+                  <label>Email *</label>
+                  <input 
+                    className="contact-input" 
+                    placeholder="your@example.com" 
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
+                    required
+                  />
+                </div>
+               <div className="contact-field">
+                <label>Phone Number *</label>
+                <input 
+                  className="contact-input" 
+                  placeholder="09171234567" 
+                  type="tel"
+                  value={contactForm.phone}
+                  onChange={(e) => {
+                    // Allow only numbers and limit to 11 digits
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    setContactForm({...contactForm, phone: value});
+                  }}
+                  pattern="[0-9]{11}"
+                  maxLength="11"
+                  required
+                />
+                {contactForm.phone && contactForm.phone.length !== 11 && (
+                  <small style={{ color: 'var(--rust)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Phone number must be exactly 11 digits
+                  </small>
+                )}
               </div>
-              <div className="contact-field">
-                <label>Email</label>
-                <input className="contact-input" placeholder="your@example.com" type="email"/>
-              </div>
-              <div className="contact-field">
-                <label>Message</label>
-                <textarea className="contact-input" placeholder="Tell us about your stay…"/>
-              </div>
-              <button className="contact-btn">Contact Us</button>
+                
+                <div className="contact-field">
+                  <label>Message *</label>
+                  <textarea 
+                    className="contact-input" 
+                    placeholder="Tell us about your stay…"
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <button 
+                  type="submit" 
+                  className="contact-btn"
+                  disabled={isSubmitting}
+                  style={{
+                    opacity: isSubmitting ? 0.7 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
+                </button>
+              </form>
             </div>
 
             <div className="contact-info-col">

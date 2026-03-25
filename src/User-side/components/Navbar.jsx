@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogIn, UserPlus, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 /* ─────────────────────────────────────────────────────────────
    DARK MODE HOOK
@@ -346,114 +346,151 @@ const NAV_STYLES = `
 ───────────────────────────────────────────────────────────── */
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useDarkMode();
-  const [section, setSection] = useState('home');
-  const [isRoomsPage, setIsRoomsPage] = useState(false);
+  const [activeLink, setActiveLink] = useState('');
 
   const links = [
-    { label: 'Home',    id: 'home',    target: null, path: '/home' },
-    { label: 'Rooms',   id: 'rooms',   target: 'rooms-section', path: '/rooms' },
-    { label: 'Gallery', id: 'gallery', target: 'gallery-section', path: '/gallery' },
-    { label: 'Contact', id: 'contact', target: 'contact-section', path: '/contact' },
-    { label: 'FAQs',    id: 'faqs',    target: 'faqs-section', path: '/faqs' },
+    { label: 'Home',    id: 'home',    target: null, path: '/' },
+    { label: 'Rooms',   id: 'rooms',   target: 'rooms-section', path: '/' },
+    { label: 'Gallery', id: 'gallery', target: 'gallery-section', path: '/' },
+    { label: 'Contact', id: 'contact', target: 'contact-section', path: '/' },
+    { label: 'FAQs',    id: 'faqs',    target: 'faqs-section', path: '/' },
   ];
 
-  const go = (target, id, path) => {
-    setOpen(false);
-    setSection(id);
-    
-    // If we're navigating to rooms page
-    if (path === '/rooms') {
-      navigate(path);
-      return;
+  // Function to scroll to a specific section on the home page
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offset = 72; // Navbar height + some padding
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
-    
-    // For other pages, handle scroll or navigation
-    if (path && path !== '/') {
-      navigate(path);
-      return;
-    }
-    
-    // For home page sections
-    if (!target) { 
-      window.scrollTo({ top: 0, behavior: 'smooth' }); 
-      return; 
-    }
-    const el = document.getElementById(target);
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: 'smooth' });
   };
 
+  // Main navigation handler
+  const handleNavigation = async (target, id, path) => {
+    setOpen(false);
+    
+    // If it's the home link
+    if (id === 'home') {
+      if (location.pathname !== '/') {
+        // Navigate to home page
+        navigate('/');
+      } else {
+        // Already on home, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      setActiveLink('home');
+      return;
+    }
+    
+    // For other sections (rooms, gallery, contact, faqs)
+    if (location.pathname === '/') {
+      // Already on home page, just scroll to section
+      if (target) {
+        scrollToSection(target);
+      }
+    } else {
+      // On a different page, navigate to home first, then scroll
+      navigate('/');
+      // Wait for navigation to complete and page to render
+      setTimeout(() => {
+        if (target) {
+          scrollToSection(target);
+        }
+      }, 150);
+    }
+    setActiveLink(id);
+  };
+
+  // Handle Book Now button
   const handleBookNow = () => {
     setOpen(false);
-    setSection('rooms');
-    setIsRoomsPage(true);
-    navigate('/rooms'); 
+    if (location.pathname === '/') {
+      // On home page, scroll to rooms section
+      scrollToSection('rooms-section');
+    } else {
+      // On other page, navigate to home and scroll to rooms
+      navigate('/');
+      setTimeout(() => {
+        scrollToSection('rooms-section');
+      }, 150);
+    }
+    setActiveLink('rooms');
   };
 
-  // Check if we're on rooms page
+  // Update active link based on current page and scroll position
   useEffect(() => {
-    const checkCurrentPage = () => {
-      const path = window.location.pathname;
-      const isRooms = path === '/rooms';
-      setIsRoomsPage(isRooms);
-      if (isRooms) {
-        setSection('rooms');
-      } else if (path === '/') {
-        // On home page, let scroll handler manage section
-        const ids = links.filter(l => l.target).map(l => ({ el: l.target, id: l.id }));
-        const y = window.scrollY + 90;
-        let cur = 'home';
-        for (const { el, id } of ids) {
-          const node = document.getElementById(el);
-          if (node && y >= node.offsetTop) cur = id;
+    const updateActiveLink = () => {
+      const path = location.pathname;
+      
+      if (path === '/') {
+        // On home page, check scroll position
+        const scrollPosition = window.scrollY + 100;
+        
+        // Check each section
+        const sections = [
+          { id: 'home', element: null, threshold: 0 },
+          { id: 'rooms', element: document.getElementById('rooms-section'), threshold: 100 },
+          { id: 'gallery', element: document.getElementById('gallery-section'), threshold: 100 },
+          { id: 'contact', element: document.getElementById('contact-section'), threshold: 100 },
+          { id: 'faqs', element: document.getElementById('faqs-section'), threshold: 100 }
+        ];
+        
+        let currentActive = 'home';
+        
+        // Check from bottom to top
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const section = sections[i];
+          if (section.id === 'home') {
+            if (scrollPosition < 200) {
+              currentActive = 'home';
+              break;
+            }
+          } else if (section.element) {
+            const elementTop = section.element.offsetTop;
+            if (scrollPosition >= elementTop - section.threshold) {
+              currentActive = section.id;
+              break;
+            }
+          }
         }
-        setSection(cur);
+        
+        setActiveLink(currentActive);
       } else {
-        // For other pages like gallery, contact, faqs
-        const pageId = path.substring(1); // remove leading slash
-        if (links.some(link => link.id === pageId)) {
-          setSection(pageId);
+        // On other pages, check if the path matches any link
+        const matchingLink = links.find(link => link.id === path.substring(1));
+        if (matchingLink) {
+          setActiveLink(matchingLink.id);
+        } else {
+          setActiveLink('');
         }
       }
     };
     
-    checkCurrentPage();
+    // Initial update
+    updateActiveLink();
     
-    // Listen for route changes
-    window.addEventListener('popstate', checkCurrentPage);
-    return () => window.removeEventListener('popstate', checkCurrentPage);
-  }, []);
-
-  useEffect(() => {
-    const ids = links.filter(l => l.target).map(l => ({ el: l.target, id: l.id }));
-    const onScroll = () => {
-      // Only update section based on scroll if we're on home page
-      if (window.location.pathname === '/') {
-        const y = window.scrollY + 90;
-        let cur = 'home';
-        for (const { el, id } of ids) {
-          const node = document.getElementById(el);
-          if (node && y >= node.offsetTop) cur = id;
-        }
-        setSection(cur);
-      }
+    // Add scroll listener only on home page
+    if (location.pathname === '/') {
+      window.addEventListener('scroll', updateActiveLink);
+    }
+    
+    return () => {
+      window.removeEventListener('scroll', updateActiveLink);
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [location.pathname]);
 
-  useEffect(() => {
-    const fn = e => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('keydown', fn);
-    return () => document.removeEventListener('keydown', fn);
-  }, []);
-
-  // Determine if a link should be active
-  const isActive = (id, path) => {
-    if (isRoomsPage && id === 'rooms') return true;
-    if (path === '/') return section === id && !isRoomsPage;
-    return section === id;
+  // Check if a link should be active
+  const isActive = (id) => {
+    return activeLink === id;
   };
 
   return (
@@ -464,7 +501,11 @@ export default function Navbar() {
         <div className="sn-inner">
 
           {/* Logo */}
-          <button className="sn-logo" onClick={() => go(null, 'home', '/')} aria-label="Go to top">
+          <button 
+            className="sn-logo" 
+            onClick={() => handleNavigation(null, 'home', '/')} 
+            aria-label="Go to home"
+          >
             <img src="/src/assets/SolazLogo.png" alt="Solaz" />
           </button>
 
@@ -474,9 +515,9 @@ export default function Navbar() {
               <button
                 key={id}
                 role="listitem"
-                className={`sn-link${isActive(id, path) ? ' active' : ''}`}
-                onClick={() => go(target, id, path)}
-                aria-current={isActive(id, path) ? 'page' : undefined}
+                className={`sn-link${isActive(id) ? ' active' : ''}`}
+                onClick={() => handleNavigation(target, id, path)}
+                aria-current={isActive(id) ? 'page' : undefined}
               >
                 {label}
               </button>
@@ -522,9 +563,9 @@ export default function Navbar() {
             {links.map(({ label, id, target, path }) => (
               <button
                 key={id}
-                className={`sn-mob-link${isActive(id, path) ? ' active' : ''}`}
-                onClick={() => go(target, id, path)}
-                aria-current={isActive(id, path) ? 'page' : undefined}
+                className={`sn-mob-link${isActive(id) ? ' active' : ''}`}
+                onClick={() => handleNavigation(target, id, path)}
+                aria-current={isActive(id) ? 'page' : undefined}
               >
                 {label}
               </button>
@@ -568,7 +609,7 @@ export default function Navbar() {
   );
 }
 
-// Add these icon components if you don't have them imported
+// Icon components
 const Sun = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="5"/>

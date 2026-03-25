@@ -21,6 +21,7 @@ import GalleryManagement from './Admin/GalleryManagement';
 import RoomManagement from './Admin/RoomManagement';
 import { AdminLayout } from './Admin/AdminNavbar';
 import BookNow from './User-side/pages/BookNow';
+import AdminContacts from './Admin/AdminContacts';
 
 
 function AppContent() {
@@ -203,6 +204,14 @@ function AppContent() {
             element={
               <ProtectedAdminRoute>
                 <Navigate to="/admin/bookings" replace />
+              </ProtectedAdminRoute>
+            } 
+          />
+           <Route 
+            path="/admin/contacts" 
+            element={
+              <ProtectedAdminRoute>
+                <AdminContacts />
               </ProtectedAdminRoute>
             } 
           />
